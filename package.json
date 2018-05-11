@@ -1,0 +1,22 @@
+{
+  "name": "fuzz-complete",
+  "version": "1.0.0",
+  "description": "",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "mocha \"lib/**/*_test.js\"",
+    "test:watch": "tsc-then -- npm test"
+  },
+  "keywords": [],
+  "author": "",
+  "devDependencies": {
+    "@types/chai": "^4.1.3",
+    "@types/mocha": "^5.2.0",
+    "chai": "^4.1.2",
+    "mocha": "^5.1.1",
+    "source-map-support": "^0.5.5",
+    "tsc-then": "^1.1.0",
+    "typescript": "^2.8.3"
+  }
+}
