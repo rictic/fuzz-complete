@@ -72,28 +72,10 @@ export class Language {
     } else if (sequence.length === 1) {
       yield* this.iterateOverProduction(sequence[0]);
     } else {
-      const self = this;
-      const iterableIterables = new BufferedIterable((function*() {
-        for (const prefix of self.iterateOverProduction(sequence[0])) {
-          yield(function*() {
-            for (const suffix of self.concatenateSequence(sequence.slice(1))) {
-              yield prefix.concat(suffix);
-            }
-          })();
-        }
-      })());
-      while (true) {
-        let yielded = false;
-        for (const iterable of iterableIterables) {
-          const {done, value} = iterable.next();
-          if (!done) {
-            yielded = true;
-            yield value;
-          }
-        }
-        if (!yielded) {
-          return;
-        }
+      for (const [prefix, suffix] of everyCombination(
+               this.iterateOverProduction(sequence[0]),
+               this.concatenateSequence(sequence.slice(1)))) {
+        yield prefix.concat(suffix);
       }
     }
   }
@@ -104,31 +86,82 @@ export class Language {
   }
 }
 
+// function* enumerated<T>(iter: Iterable<T>): Iterable<[number, T]> {
+//   let i = 0;
+//   for (const val of iter) {
+//     yield [i++, val];
+//   }
+// }
+
+export function*
+    everyCombination<A, B>(rawLefts: Iterator<A>, rawRights: Iterator<B>):
+        Iterable<[A, B]> {
+  const lefts = new BufferedIterable(rawLefts);
+  const rights = new BufferedIterable(rawRights);
+  let leftsDone = false;
+  let rightsDone = false;
+  let max = 0;
+  while (true) {
+    if (!leftsDone) {
+      const {done, value: left} = lefts.get(max);
+      if (done) {
+        leftsDone = true;
+      } else {
+        for (let i = 0; i < max; i++) {
+          const {done, value: right} = rights.get(i);
+          if (done) {
+            break;
+          }
+          yield [left!, right!];
+        }
+      }
+    }
+    if (!rightsDone) {
+      const {done, value: right} = rights.get(max);
+      if (done) {
+        rightsDone = true;
+      } else {
+        for (let i = 0; i <= max; i++) {
+          const {done, value: left} = lefts.get(i);
+          if (done) {
+            break;
+          }
+          yield [left!, right!];
+        }
+      }
+    }
+    if (leftsDone && rightsDone) {
+      break;
+    }
+    max++;
+  }
+}
+
 export class Rule {
   constructor(
       readonly name: string, readonly choices: ReadonlyArray<Production>) {}
 
   toString() {
     return `${this.name} -> ${
-        this.choices.map((p) => this.stringifyProduction(p)).join(' | ')}`;
+        this.choices.map((p) => stringifyProduction(p)).join(' | ')}`;
   }
+}
 
-  private stringifyProduction(production: Production): string {
-    switch (production.kind) {
-      case 'literal':
-        return `"${production.value.replace(/"/g, '\\"')}"`;
-      case 'rule':
-        return production.name;
-      case 'sequence':
-        if (production.productions.length === 0) {
-          return 'ℇ';
-        }
-        return production.productions.map((p) => this.stringifyProduction(p))
-            .join(' ');
-      default:
-        const never: never = production;
-        throw new Error(`Unknown production kind: ${util.inspect(never)}`);
-    }
+function stringifyProduction(production: Production): string {
+  switch (production.kind) {
+    case 'literal':
+      return `"${production.value.replace(/"/g, '\\"')}"`;
+    case 'rule':
+      return production.name;
+    case 'sequence':
+      if (production.productions.length === 0) {
+        return 'ℇ';
+      }
+      return production.productions.map((p) => stringifyProduction(p))
+          .join(' ');
+    default:
+      const never: never = production;
+      throw new Error(`Unknown production kind: ${util.inspect(never)}`);
   }
 }
 
@@ -149,5 +182,16 @@ export class BufferedIterable<T> {
       yield this.buffer[i];
       i++;
     }
+  }
+
+  get(index: number): {done: true, value: undefined}|{done: false, value: T} {
+    while (index >= this.buffer.length) {
+      const {done, value} = this.iterator.next();
+      if (done) {
+        return {done: true, value: undefined};
+      }
+      this.buffer.push(value);
+    }
+    return {done: false, value: this.buffer[index]};
   }
 }

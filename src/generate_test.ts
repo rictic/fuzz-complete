@@ -1,6 +1,6 @@
 import {assert} from 'chai';
 
-import {BufferedIterable, Language, Production, Rule} from './generate';
+import {BufferedIterable, everyCombination, Language, Production, Rule} from './generate';
 
 
 function* take<T>(iter: Iterator<T>, num: number) {
@@ -29,7 +29,7 @@ function Sequence(...productions: Production[]): Production {
 const Empty = Sequence();
 
 
-suite('Any number of b, then one a', () => {
+suite('language b*a', () => {
   const fooLanguage = new Language(
       'b*a',
       [new Rule('foo', [Literal('a'), Sequence(Literal('b'), Ref('foo'))])]);
@@ -48,7 +48,7 @@ Language "b*a":
   });
 });
 
-suite('a followed by any number of b or c, interleaved', () => {
+suite('language a(b|c)*', () => {
   const aThenBsAndCs = new Language('a(b|c)*', [
     new Rule('start', [Sequence(Literal('a'), Ref('bOrCStar'))]),
     new Rule('bOrC', [Literal('b'), Literal('c')]),
@@ -71,7 +71,7 @@ Language "a(b|c)*":
   });
 });
 
-suite('(a+b)*', () => {
+suite('language (a+b)*', () => {
   const lang = new Language('(a+b)*', [
     new Rule(
         'start',
@@ -83,12 +83,16 @@ suite('(a+b)*', () => {
   ]);
 
   test('generates the first few members', () => {
-    assert.deepEqual(
-        [...take(lang[Symbol.iterator](), 10)], ['', 'ab', 'aab', 'abab']);
+    assert.deepEqual([...take(lang[Symbol.iterator](), 20)], [
+      '',         'ab',        'aab',      'abab',     'aabab',
+      'aaab',     'aaabab',    'abaab',    'aabaab',   'aaabaab',
+      'aaaab',    'aaaabab',   'aaaabaab', 'ababab',   'aababab',
+      'aaababab', 'aaaababab', 'aaaaab',   'aaaaabab', 'aaaaabaab'
+    ]);
   });
 });
 
-suite('javascript', () => {
+suite('simplified javascript', () => {
   const js = new Language('javascript', [
     new Rule('file', [Ref('program')]),
     new Rule('program', [Sequence(Ref('statements'))]),
@@ -96,7 +100,6 @@ suite('javascript', () => {
         'statements',
         [
           Empty,
-          //
           Sequence(Ref('statement'), Ref('statements')),
         ]),
     new Rule('statement', [Ref('expressionStatement')]),
@@ -134,8 +137,19 @@ suite('javascript', () => {
     new Rule('character', [Literal('a'), Literal('b'), Literal('c')])
   ]);
 
-  test.skip('generates the first few members', () => {
-    assert.deepEqual([...take(js[Symbol.iterator](), 50)], []);
+  test('generates the first few members', () => {
+    assert.deepEqual([...take(js[Symbol.iterator](), 10)], [
+      '',
+      '\'\';',
+      '0;',
+      '\'\';\'\';',
+      '0;\'\';',
+      '\'a\';',
+      '\'a\';\'\';',
+      '\'\';0;',
+      '0;0;',
+      '\'a\';0;',
+    ]);
   });
 });
 
@@ -175,11 +189,64 @@ suite('bufferedIterable', () => {
     assert.deepEqual({done: false, value: 3}, it2.next());
     assert.deepEqual({done: false, value: 4}, it2.next());
     assert.deepEqual({done: false, value: 5}, it2.next());
-    // tslint:disable-next-line: no-any Typings are wrong.
-    assert.deepEqual({done: true, value: undefined} as any, it2.next());
+    // This cast is bad, but the typings are overspecific.
+    assert.deepEqual(
+        {done: true, value: undefined!} as IteratorResult<number>, it2.next());
     assert.deepEqual({done: false, value: 4}, it1.next());
     assert.deepEqual({done: false, value: 5}, it1.next());
-    // tslint:disable-next-line: no-any Typings are wrong.
-    assert.deepEqual({done: true, value: undefined} as any, it1.next());
+    // This cast is bad, but the typings are overspecific.
+    assert.deepEqual(
+        {done: true, value: undefined!} as IteratorResult<number>, it1.next());
   });
+});
+
+suite('everyCombination', () => {
+  function* naturals() {
+    let i = 1;
+    while (true) {
+      yield i;
+      i++;
+    }
+  }
+
+  function* abc() {
+    yield 'a';
+    yield 'b';
+    yield 'c';
+  }
+
+  test('can give every combination even of two unending iterators', () => {
+    const cartesians = everyCombination(naturals(), naturals());
+    assert.deepEqual([...take(cartesians[Symbol.iterator](), 10)], [
+      [1, 1], [2, 1], [1, 2], [2, 2], [3, 1], [3, 2], [1, 3], [2, 3], [3, 3],
+      [4, 1]
+    ]);
+  });
+
+  test('can give every combination of two ending iterators', () => {
+    const letterPairs = everyCombination(abc(), abc());
+    // Can try to take 100, there's only 9 total.
+    assert.deepEqual([...take(letterPairs[Symbol.iterator](), 100)], [
+      ['a', 'a'], ['b', 'a'], ['a', 'b'], ['b', 'b'], ['c', 'a'], ['c', 'b'],
+      ['a', 'c'], ['b', 'c'], ['c', 'c']
+    ]);
+  });
+
+  test(
+      'can give every combination of one ending and one unending iterators',
+      () => {
+        const letterNumber = everyCombination(abc(), naturals());
+        const numberLetter = everyCombination(naturals(), abc());
+        assert.deepEqual([...take(letterNumber[Symbol.iterator](), 15)], [
+          ['a', 1], ['b', 1], ['a', 2], ['b', 2], ['c', 1], ['c', 2], ['a', 3],
+          ['b', 3], ['c', 3], ['a', 4], ['b', 4], ['c', 4], ['a', 5], ['b', 5],
+          ['c', 5]
+        ]);
+
+        assert.deepEqual([...take(numberLetter[Symbol.iterator](), 15)], [
+          [1, 'a'], [2, 'a'], [1, 'b'], [2, 'b'], [3, 'a'], [3, 'b'], [1, 'c'],
+          [2, 'c'], [3, 'c'], [4, 'a'], [4, 'b'], [4, 'c'], [5, 'a'], [5, 'b'],
+          [5, 'c']
+        ]);
+      });
 });
