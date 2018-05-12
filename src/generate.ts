@@ -142,8 +142,8 @@ export class Rule {
       readonly name: string, readonly choices: ReadonlyArray<Production>) {}
 
   toString() {
-    return `${this.name} -> ${
-        this.choices.map((p) => stringifyProduction(p)).join(' | ')}`;
+    return `${this.name} = ${
+        this.choices.map((p) => stringifyProduction(p)).join(' | ')};`;
   }
 }
 

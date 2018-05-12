@@ -37,7 +37,7 @@ suite('language b*a', () => {
   test('to string', () => {
     assert.deepEqual(fooLanguage.toString(), `
 Language "b*a":
-  foo -> "a" | "b" foo
+  foo = "a" | "b" foo;
         `.trim());
   });
 
@@ -58,9 +58,9 @@ suite('language a(b|c)*', () => {
   test('to string', () => {
     assert.deepEqual(aThenBsAndCs.toString(), `
 Language "a(b|c)*":
-  start -> "a" bOrCStar
-  bOrC -> "b" | "c"
-  bOrCStar -> ℇ | bOrC bOrCStar
+  start = "a" bOrCStar;
+  bOrC = "b" | "c";
+  bOrCStar = ℇ | bOrC bOrCStar;
         `.trim());
   });
 
