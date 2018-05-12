@@ -78,6 +78,9 @@ class ParserContext {
             choices.push(getProduction(currentChoice));
 
             break parseChoicesLoop;
+          default:
+            throw new ParseError(
+                `Unexpected text: ${this.tokenizer.slice(nextToken)}`);
         }
       }
       rules.push(new Rule(this.tokenizer.slice(nameToken), choices));

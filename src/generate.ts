@@ -1,4 +1,4 @@
-import * as util from 'util';
+// import * as util from 'util';
 export type Production = {
   kind: 'literal',
   value: string
@@ -60,7 +60,7 @@ export class Language {
         return;
       default:
         const never: never = production;
-        throw new Error(`Unknown production kind: ${util.inspect(never)}`);
+        throw new Error(`Unknown production kind: ${JSON.stringify(never)}`);
     }
   }
 
@@ -161,7 +161,7 @@ function stringifyProduction(production: Production): string {
           .join(' ');
     default:
       const never: never = production;
-      throw new Error(`Unknown production kind: ${util.inspect(never)}`);
+      throw new Error(`Unknown production kind: ${JSON.stringify(never)}`);
   }
 }
 

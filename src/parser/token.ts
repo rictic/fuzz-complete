@@ -18,7 +18,6 @@ export enum TokenType {
   string = (2 ** 1),
   comment = (2 ** 2),
   word = (2 ** 3),
-  boundary = (2 ** 4),
   semicolon = (2 ** 11),
   colon = (2 ** 12),
   equals = (2 ** 15),

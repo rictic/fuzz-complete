@@ -248,8 +248,10 @@ class Tokenizer {
    */
   tokenizeBoundary(offset: number): Token {
     // TODO(cdata): Evaluate if this is faster than a switch statement:
-    const type = boundaryTokenTypes[this.text[offset]] || Token.type.boundary;
-
+    const type = boundaryTokenTypes[this.text[offset]];
+    if (type === undefined) {
+      throw new Error(`Unexpected boundary: ${this.text[offset]}`);
+    }
     return new Token(type, offset, offset + 1);
   }
 }

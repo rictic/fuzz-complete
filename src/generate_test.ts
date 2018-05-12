@@ -1,21 +1,7 @@
 import {assert} from 'chai';
 
 import {BufferedIterable, everyCombination, Language, Production, Rule} from './generate';
-
-
-function* take<T>(iter: Iterator<T>, num: number) {
-  while (true) {
-    if (num <= 0) {
-      return;
-    }
-    const {done, value} = iter.next();
-    if (done) {
-      return;
-    }
-    yield value;
-    num--;
-  }
-}
+import {take} from './util';
 
 function Literal(value: string): Production {
   return {kind: 'literal', value};
@@ -43,8 +29,7 @@ Language "b*a":
 
   test('generates the first few members', () => {
     assert.deepEqual(
-        [...take(fooLanguage[Symbol.iterator](), 5)],
-        ['a', 'ba', 'bba', 'bbba', 'bbbba']);
+        [...take(fooLanguage, 5)], ['a', 'ba', 'bba', 'bbba', 'bbbba']);
   });
 });
 
@@ -66,7 +51,7 @@ Language "a(b|c)*":
 
   test('generates the first few members', () => {
     assert.deepEqual(
-        [...take(aThenBsAndCs[Symbol.iterator](), 10)],
+        [...take(aThenBsAndCs, 10)],
         ['a', 'ab', 'ac', 'abb', 'acb', 'abc', 'acc', 'abbb', 'acbb', 'abcb']);
   });
 });
@@ -83,7 +68,7 @@ suite('language (a+b)*', () => {
   ]);
 
   test('generates the first few members', () => {
-    assert.deepEqual([...take(lang[Symbol.iterator](), 20)], [
+    assert.deepEqual([...take(lang, 20)], [
       '',         'ab',        'aab',      'abab',     'aabab',
       'aaab',     'aaabab',    'abaab',    'aabaab',   'aaabaab',
       'aaaab',    'aaaabab',   'aaaabaab', 'ababab',   'aababab',
@@ -138,7 +123,7 @@ suite('simplified javascript', () => {
   ]);
 
   test('generates the first few members', () => {
-    assert.deepEqual([...take(js[Symbol.iterator](), 10)], [
+    assert.deepEqual([...take(js, 10)], [
       '',
       '\'\';',
       '0;',
