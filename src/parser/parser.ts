@@ -1,6 +1,5 @@
-import {LocatedError} from '../error.js';
-import {Language, Production, Rule} from '../generate.js';
-
+import {Language, Production, Rule} from './ast.js';
+import {LocatedError} from './error.js';
 import {Token, TokenType} from './token.js';
 import {Tokenizer} from './tokenizer.js';
 
