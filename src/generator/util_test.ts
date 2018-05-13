@@ -1,8 +1,8 @@
 import {assert} from 'chai';
 
-import {take} from '../util';
+import {take} from '../util.js';
 
-import {BufferedIterable, everyCombination, everyLabelling} from './util';
+import {BufferedIterable, everyCombination, everyLabelling} from './util.js';
 
 suite('everyCombination', () => {
   function* naturals() {

@@ -1,8 +1,8 @@
 import {assert} from 'chai';
 
-import {take} from '../util';
+import {take} from '../util.js';
 
-import {Parser} from './parser';
+import {Parser} from './parser.js';
 
 suite('Parser', () => {
   test('it can parse a minimal file', () => {

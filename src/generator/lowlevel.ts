@@ -1,6 +1,6 @@
-import {Language, Production, Rule} from '../parser/ast';
-import {take} from '../util';
-import {everyCombination, everyLabelling} from './util';
+import {Language, Production, Rule} from '../parser/ast.js';
+import {take} from '../util.js';
+import {everyCombination, everyLabelling} from './util.js';
 
 type IntermediateIterationResult = string|{label: string};
 interface LowLevelProduction {
