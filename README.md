@@ -32,12 +32,18 @@ fuzz-complete will produce every sentence in that language, in roughly increasin
 
 ### API
 
+**hello-fuzz.js**
 ```javascript
 import {Parser} from 'fuzz-complete'
 const language = new Parser().parse(`Language "foo*": foo = | 'foo' foo;`);
 for (const sentence of language) {
   console.log(sentence);
 }
+```
+
+```bash
+  npm install esm fuzz-complete
+  node -r esm hello-fuzz.js | less
 ```
 
 ### Iteration order
