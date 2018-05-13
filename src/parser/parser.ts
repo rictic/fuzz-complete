@@ -1,8 +1,8 @@
-import {LocatedError} from '../error';
-import {Language, Production, Rule} from '../generate';
+import {LocatedError} from '../error.js';
+import {Language, Production, Rule} from '../generate.js';
 
-import {Token, TokenType} from './token';
-import {Tokenizer} from './tokenizer';
+import {Token, TokenType} from './token.js';
+import {Tokenizer} from './tokenizer.js';
 
 type Result<S, F> = {
   successful: true,

@@ -1,5 +1,5 @@
-import {Token} from './parser/token';
-import {Tokenizer} from './parser/tokenizer';
+import {Token} from './parser/token.js';
+import {Tokenizer} from './parser/tokenizer.js';
 
 export class LocatedError extends Error {
   readonly originalMessage: string;

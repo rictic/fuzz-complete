@@ -9,7 +9,7 @@
  * rights grant found at http://polymer.github.io/PATENTS.txt
  */
 
-import {boundaryTokenTypes, Token} from './token';
+import {boundaryTokenTypes, Token} from './token.js';
 
 /**
  * A set of common RegExp matchers for tokenizing.

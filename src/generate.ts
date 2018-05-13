@@ -1,4 +1,4 @@
-import {LocatedError} from './error';
+import {LocatedError} from './error.js';
 
 // import * as util from 'util';
 export type Production = {

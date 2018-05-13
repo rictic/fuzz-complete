@@ -1,2 +1,2 @@
-export {Language, Production, Rule} from './generate';
-export {Parser} from './parser/parser';
+export {Language, Production, Rule} from './generate.js';
+export {Parser} from './parser/parser.js';
