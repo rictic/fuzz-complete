@@ -3,11 +3,15 @@ import {assert} from 'chai';
 import {BufferedIterable, everyCombination, Language, Production, Rule} from './generate';
 import {take} from './util';
 
+function NewRule(name: string, choices: Production[]) {
+  // We don't care about locations in these tests.
+  return new Rule(name, choices, 0, 0);
+}
 function Literal(value: string): Production {
   return {kind: 'literal', value};
 }
 function Ref(name: string): Production {
-  return {kind: 'rule', name};
+  return {kind: 'rule', name, offsetStart: 0, offsetEnd: 0};
 }
 function Sequence(...productions: Production[]): Production {
   return {kind: 'sequence', productions};
@@ -18,7 +22,7 @@ const Empty = Sequence();
 suite('language b*a', () => {
   const fooLanguage = new Language(
       'b*a',
-      [new Rule('foo', [Literal('a'), Sequence(Literal('b'), Ref('foo'))])]);
+      [NewRule('foo', [Literal('a'), Sequence(Literal('b'), Ref('foo'))])]);
 
   test('to string', () => {
     assert.deepEqual(fooLanguage.toString(), `
@@ -35,9 +39,9 @@ Language "b*a":
 
 suite('language a(b|c)*', () => {
   const aThenBsAndCs = new Language('a(b|c)*', [
-    new Rule('start', [Sequence(Literal('a'), Ref('bOrCStar'))]),
-    new Rule('bOrC', [Literal('b'), Literal('c')]),
-    new Rule('bOrCStar', [Empty, Sequence(Ref('bOrC'), Ref('bOrCStar'))])
+    NewRule('start', [Sequence(Literal('a'), Ref('bOrCStar'))]),
+    NewRule('bOrC', [Literal('b'), Literal('c')]),
+    NewRule('bOrCStar', [Empty, Sequence(Ref('bOrC'), Ref('bOrCStar'))])
   ]);
 
   test('to string', () => {
@@ -58,13 +62,13 @@ Language "a(b|c)*":
 
 suite('language (a+b)*', () => {
   const lang = new Language('(a+b)*', [
-    new Rule(
+    NewRule(
         'start',
         [
           Empty,
           Sequence(Literal('a'), Ref('aStar'), Literal('b'), Ref('start'))
         ]),
-    new Rule('aStar', [Empty, Sequence(Literal('a'), Ref('aStar'))])
+    NewRule('aStar', [Empty, Sequence(Literal('a'), Ref('aStar'))])
   ]);
 
   test('generates the first few members', () => {
@@ -79,19 +83,18 @@ suite('language (a+b)*', () => {
 
 suite('simplified javascript', () => {
   const js = new Language('javascript', [
-    new Rule('file', [Ref('program')]),
-    new Rule('program', [Sequence(Ref('statements'))]),
-    new Rule(
+    NewRule('file', [Ref('program')]),
+    NewRule('program', [Sequence(Ref('statements'))]),
+    NewRule(
         'statements',
         [
           Empty,
           Sequence(Ref('statement'), Ref('statements')),
         ]),
-    new Rule('statement', [Ref('expressionStatement')]),
-    new Rule(
-        'expressionStatement', [Sequence(Ref('expression'), Literal(';'))]),
-    new Rule('expression', [Ref('stringLiteral'), Ref('numberLiteral')]),
-    new Rule(
+    NewRule('statement', [Ref('expressionStatement')]),
+    NewRule('expressionStatement', [Sequence(Ref('expression'), Literal(';'))]),
+    NewRule('expression', [Ref('stringLiteral'), Ref('numberLiteral')]),
+    NewRule(
         'stringLiteral',
         [
           // {
@@ -108,18 +111,18 @@ suite('simplified javascript', () => {
               Literal('\''),
               ),
         ]),
-    new Rule('numberLiteral', [Sequence(Ref('digit'), Ref('digits'))]),
-    new Rule('digits', [Empty, Sequence(Ref('digit'), Ref('digits'))]),
-    new Rule(
+    NewRule('numberLiteral', [Sequence(Ref('digit'), Ref('digits'))]),
+    NewRule('digits', [Empty, Sequence(Ref('digit'), Ref('digits'))]),
+    NewRule(
         'digit',
         [
           Literal('0'), Literal('1'), Literal('2'), Literal('3'), Literal('4'),
           Literal('5'), Literal('6'), Literal('7'), Literal('8'), Literal('9')
         ]),
-    new Rule(
+    NewRule(
         'stringContents',
         [Empty, Sequence(Ref('character'), Ref('stringContents'))]),
-    new Rule('character', [Literal('a'), Literal('b'), Literal('c')])
+    NewRule('character', [Literal('a'), Literal('b'), Literal('c')])
   ]);
 
   test('generates the first few members', () => {

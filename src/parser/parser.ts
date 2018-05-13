@@ -1,3 +1,4 @@
+import {LocatedError} from '../error';
 import {Language, Production, Rule} from '../generate';
 
 import {Token, TokenType} from './token';
@@ -8,11 +9,11 @@ type Result<S, F> = {
   value: S
 }|{successful: false, error: F};
 
-class ParseError extends Error {}
+
 
 class ParserContext {
   private readonly tokenizer: Tokenizer;
-  public readonly result: Result<Language, ParseError>;
+  public readonly result: Result<Language, LocatedError>;
   constructor(text: string) {
     this.tokenizer = new Tokenizer(text);
     try {
@@ -47,7 +48,8 @@ class ParserContext {
         this.skipWhitespace();
         const nextToken = this.tokenizer.currentToken;
         if (!nextToken) {
-          throw new ParseError('Unexpected end of input');
+          throw LocatedError.atCurrentLocation(
+              'Unexpected end of input, missing semicolon?', this.tokenizer);
         }
         function getProduction(choice: Production[]): Production {
           if (choice.length === 1) {
@@ -66,7 +68,12 @@ class ParserContext {
             if (text === 'ℇ') {
               break;
             }
-            currentChoice.push({kind: 'rule', name: text});
+            currentChoice.push({
+              kind: 'rule',
+              name: text,
+              offsetStart: nextToken.start,
+              offsetEnd: nextToken.end
+            });
             break;
           case Token.type.verticalBar:
             this.tokenizer.advance();
@@ -79,11 +86,13 @@ class ParserContext {
 
             break parseChoicesLoop;
           default:
-            throw new ParseError(
-                `Unexpected text: ${this.tokenizer.slice(nextToken)}`);
+            throw LocatedError.atToken(
+                `Unexpected token inside of rule definition`, nextToken);
         }
       }
-      rules.push(new Rule(this.tokenizer.slice(nameToken), choices));
+      rules.push(new Rule(
+          this.tokenizer.slice(nameToken), choices, nameToken.start,
+          nameToken.end));
       this.skipWhitespace();
     }
     return rules;
@@ -92,8 +101,7 @@ class ParserContext {
   consumeWordWithValue(expectedValue?: string) {
     const token = this.consume(Token.type.word, `word \`${expectedValue}\``);
     if (this.tokenizer.slice(token) !== expectedValue) {
-      throw new ParseError(`Expected word \`${expectedValue}\` but got ${
-          this.tokenizer.slice(token)}`);
+      throw LocatedError.atToken(`Expected word \`${expectedValue}\``, token);
     }
     this.tokenizer.advance();
     return token;
@@ -107,10 +115,11 @@ class ParserContext {
   consume(tokenType: TokenType, kind: string) {
     const token = this.tokenizer.currentToken;
     if (!token) {
-      throw new ParseError(`Unexpected end of input, expected ${kind}`);
+      throw LocatedError.atCurrentLocation(
+          `Unexpected end of input, expected ${kind}`, this.tokenizer);
     }
     if (!token.is(tokenType)) {
-      throw new ParseError(`Expected ${kind}, got token type ${token.type}`);
+      throw LocatedError.atToken(`Expected ${kind}`, token);
     }
     this.tokenizer.advance();
     return token;
@@ -135,6 +144,10 @@ class Parser {
       return context.result.value;
     }
     throw context.result.error;
+  }
+
+  tryParse(text: string) {
+    return (new ParserContext(text)).result;
   }
 }
 

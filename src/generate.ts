@@ -1,19 +1,60 @@
+import {LocatedError} from './error';
+
 // import * as util from 'util';
 export type Production = {
   kind: 'literal',
   value: string
-}|{kind: 'rule', name: string}|{kind: 'sequence', productions: Production[]};
+}|{kind: 'rule', name: string, offsetStart: number, offsetEnd: number}|
+    {kind: 'sequence', productions: Production[]};
 
 
 export class Language {
   private readonly rulesByName: ReadonlyMap<string, Rule>;
   constructor(readonly name: string, readonly rules: ReadonlyArray<Rule>) {
-    // TODO: validate rule uniqueness and references.
+    this.validate();
     const rulesByName = new Map<string, Rule>();
     for (const rule of rules) {
       rulesByName.set(rule.name, rule);
     }
     this.rulesByName = rulesByName;
+  }
+
+  private validate() {
+    const ruleNames = new Set<string>();
+    for (const rule of this.rules) {
+      if (ruleNames.has(rule.name)) {
+        throw new LocatedError(`Duplicate rule`, rule.nameStart, rule.nameEnd);
+      }
+      ruleNames.add(rule.name);
+    }
+    for (const rule of this.rules) {
+      for (const production of rule.choices) {
+        this.validateProduction(production, ruleNames);
+      }
+    }
+  }
+
+  private validateProduction(
+      production: Production, ruleNames: ReadonlySet<string>) {
+    switch (production.kind) {
+      case 'literal':
+        return;
+      case 'sequence':
+        for (const innerProduction of production.productions) {
+          this.validateProduction(innerProduction, ruleNames);
+        }
+        return;
+      case 'rule':
+        if (!ruleNames.has(production.name)) {
+          throw new LocatedError(
+              `Rule not declared`, production.offsetStart,
+              production.offsetEnd);
+        }
+        return;
+      default:
+        const never: never = production;
+        throw new Error(`Unknown kind of production: ${JSON.stringify(never)}`);
+    }
   }
 
   * [Symbol.iterator](): IterableIterator<string> {
@@ -139,7 +180,8 @@ export function*
 
 export class Rule {
   constructor(
-      readonly name: string, readonly choices: ReadonlyArray<Production>) {}
+      readonly name: string, readonly choices: ReadonlyArray<Production>,
+      readonly nameStart: number, readonly nameEnd: number) {}
 
   toString() {
     return `${this.name} = ${
