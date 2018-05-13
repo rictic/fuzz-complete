@@ -188,6 +188,9 @@ export class Generator {
       case 'rule':
         return this.convertRule(
             this.language.rules.find((r) => r.name === production.name)!);
+      default:
+        const never: never = production;
+        throw new Error(`Unknown production kind: ${JSON.stringify(never)}`);
     }
   }
 }
