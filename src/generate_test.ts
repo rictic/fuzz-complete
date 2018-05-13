@@ -1,11 +1,11 @@
 import {assert} from 'chai';
 
-import {BufferedIterable, everyCombination, Language, Production, Rule} from './generate';
+import {BufferedIterable, everyCombination, everyLabelling, Language, Production, Rule} from './generate';
 import {take} from './util';
 
 function NewRule(name: string, choices: Production[]) {
   // We don't care about locations in these tests.
-  return new Rule(name, choices, 0, 0);
+  return new Rule(name, choices, false, 0, 0);
 }
 function Literal(value: string): Production {
   return {kind: 'literal', value};
@@ -141,6 +141,20 @@ suite('simplified javascript', () => {
   });
 });
 
+suite('language with one labeled rule', () => {
+  const labelled = new Language('one label', [
+    NewRule('start', [Empty, Sequence(Ref('identifier'), Ref('start'))]),
+    new Rule(
+        'identifier', [Literal('a'), Literal('b'), Literal('c')], true, 0, 0)
+  ]);
+
+  test('generates the first few members', () => {
+    assert.deepEqual(
+        [...take(labelled, 10)],
+        ['', 'a', 'aa', 'ab', 'aaa', 'aab', 'aba', 'abb', 'abc', 'aaaa']);
+  });
+});
+
 suite('bufferedIterable', () => {
   test('iterates once through', () => {
     const vals = [1, 2, 3];
@@ -237,4 +251,39 @@ suite('everyCombination', () => {
           [5, 'c']
         ]);
       });
+});
+
+suite('everyChoosingWithReplacement', () => {
+  test('one choice one count', () => {
+    assert.deepEqual([...everyLabelling(['a'], 1)], [['a']]);
+  });
+
+  test('two choices one count', () => {
+    assert.deepEqual([...everyLabelling(['a', 'b'], 1)], [['a']]);
+  });
+
+  test('one choice two count', () => {
+    assert.deepEqual([...everyLabelling(['a'], 2)], [['a', 'a']]);
+  });
+
+  test('two choices two count', () => {
+    assert.deepEqual(
+        [...everyLabelling(['a', 'b'], 2)], [['a', 'a'], ['a', 'b']]);
+  });
+
+  test('three choices two count', () => {
+    assert.deepEqual(
+        [...everyLabelling(['a', 'b', 'c'], 2)], [['a', 'a'], ['a', 'b']]);
+  });
+
+  test('three choices three count', () => {
+    assert.deepEqual([...everyLabelling(['a', 'b', 'c'], 3)], [
+      ['a', 'a', 'a'], ['a', 'a', 'b'], ['a', 'b', 'a'], ['a', 'b', 'b'],
+      ['a', 'b', 'c']
+    ]);
+  });
+
+  test('zero choices five count', () => {
+    assert.deepEqual([...everyLabelling([], 5)], []);
+  });
 });

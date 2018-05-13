@@ -40,6 +40,12 @@ class ParserContext {
     this.skipWhitespace();
     while (this.tokenizer.currentToken) {
       const nameToken = this.consume(Token.type.word, 'rule name');
+      let isLabelRule = false;
+      if (this.tokenizer.currentToken &&
+          this.tokenizer.currentToken.is(Token.type.exclamationPoint)) {
+        isLabelRule = true;
+        this.tokenizer.advance();
+      }
       this.skipWhitespace();
       this.consume(Token.type.equals, 'equals');
       const choices: Production[] = [];
@@ -91,8 +97,8 @@ class ParserContext {
         }
       }
       rules.push(new Rule(
-          this.tokenizer.slice(nameToken), choices, nameToken.start,
-          nameToken.end));
+          this.tokenizer.slice(nameToken), choices, isLabelRule,
+          nameToken.start, nameToken.end));
       this.skipWhitespace();
     }
     return rules;

@@ -1,12 +1,18 @@
 import {LocatedError} from './error.js';
+import {take} from './util.js';
 
-// import * as util from 'util';
 export type Production = {
   kind: 'literal',
-  value: string
-}|{kind: 'rule', name: string, offsetStart: number, offsetEnd: number}|
-    {kind: 'sequence', productions: Production[]};
-
+  value: string,
+}|{
+  kind: 'rule',
+  name: string,
+  offsetStart: number,
+  offsetEnd: number,
+}|{
+  kind: 'sequence',
+  productions: Production[],
+};
 
 export class Language {
   private readonly rulesByName: ReadonlyMap<string, Rule>;
@@ -32,6 +38,7 @@ export class Language {
         this.validateProduction(production, ruleNames);
       }
     }
+    // TODO: validate that a label rule does not depend on a label rule
   }
 
   private validateProduction(
@@ -62,11 +69,62 @@ export class Language {
       return;
     }
     for (const resultArr of this.iterateOverRule(this.rules[0])) {
-      yield resultArr.join('');
+      yield* this.stringifyIntermediateResults(resultArr);
     }
   }
 
-  private * iterateOverRule(rule: Rule): IterableIterator<string[]> {
+  private *
+      stringifyIntermediateResults(results: IntermediateIterationResult[]):
+          IterableIterator<string> {
+    const labelsToCounts = new Map<string, number>();
+    for (const result of results) {
+      if (typeof result !== 'string') {
+        labelsToCounts.set(
+            result.label, (labelsToCounts.get(result.label) || 0) + 1);
+      }
+    }
+    if (labelsToCounts.size === 0) {
+      // Optimize for the simple case.
+      yield results.join('');
+      return;
+    }
+    const labellingsByRuleName = new Map<string, string[][]>();
+    for (const [ruleName, count] of labelsToCounts) {
+      const choices = take(
+          this.iterateOverUnlabeledRule(this.rulesByName.get(ruleName)!),
+          count);
+      labellingsByRuleName.set(
+          ruleName,
+          [...everyLabelling([...choices].map((c) => c.join()), count)]);
+    }
+    if (labellingsByRuleName.size !== 1) {
+      throw new Error('We don\'t handle multiple different labels yet.');
+    }
+    const [[rule, labellings]] = labellingsByRuleName;
+    for (const labelling of labellings) {
+      yield results
+          .map((v) => {
+            if (typeof v === 'string') {
+              return v;
+            }
+            if (v.label !== rule) {
+              throw new Error('Impossible!!');
+            }
+            return labelling.shift()!;
+          })
+          .join('');
+    }
+  }
+
+  private *
+      iterateOverLabeledRule(rule: Rule):
+          IterableIterator<IntermediateIterationResult[]> {
+    yield [{label: rule.name}];
+  }
+
+  private *
+      iterateOverUnlabeledRule(rule: Rule):
+          IterableIterator<IntermediateIterationResult[]> {
     if (rule.choices.length === 1) {
       // Optimize the simple case where there is no choice.
       yield* this.iterateOverProduction(rule.choices[0]);
@@ -87,8 +145,18 @@ export class Language {
   }
 
   private *
+      iterateOverRule(rule: Rule):
+          IterableIterator<IntermediateIterationResult[]> {
+    if (rule.labeled) {
+      yield* this.iterateOverLabeledRule(rule);
+    } else {
+      yield* this.iterateOverUnlabeledRule(rule);
+    }
+  }
+
+  private *
       iterateOverProduction(production: Production):
-          IterableIterator<string[]> {
+          IterableIterator<IntermediateIterationResult[]> {
     switch (production.kind) {
       case 'literal':
         yield [production.value];
@@ -106,7 +174,8 @@ export class Language {
   }
 
   private *
-      concatenateSequence(sequence: Production[]): IterableIterator<string[]> {
+      concatenateSequence(sequence: Production[]):
+          IterableIterator<IntermediateIterationResult[]> {
     if (sequence.length === 0) {
       yield [];
       return;
@@ -127,12 +196,65 @@ export class Language {
   }
 }
 
-// function* enumerated<T>(iter: Iterable<T>): Iterable<[number, T]> {
-//   let i = 0;
-//   for (const val of iter) {
-//     yield [i++, val];
-//   }
-// }
+export function*
+    everyLabelling(choices: string[], count: number):
+        IterableIterator<string[]> {
+  for (const numberedLabelling of everyLabellingHelper(choices.length, count)) {
+    yield numberedLabelling.map((n) => choices[n]);
+  }
+}
+
+function*
+    everyLabellingHelper(numberOfChoices: number, count: number):
+        IterableIterator<number[]> {
+  if (numberOfChoices === 0) {
+    return;
+  }
+  if (count === 1) {
+    yield [0];
+    return;
+  }
+  const smallerLabellings = everyLabellingHelper(numberOfChoices, count - 1);
+  for (const subLabelling of smallerLabellings) {
+    const maxInLabelling = subLabelling.reduce((x, y) => Math.max(x, y), 0);
+    const maxToCountTo = Math.min(maxInLabelling + 1, numberOfChoices - 1);
+    for (let i = 0; i <= maxToCountTo; i++) {
+      yield subLabelling.concat([i]);
+    }
+  }
+}
+
+type IntermediateIterationResult = string|{label: string};
+
+export class Rule {
+  constructor(
+      readonly name: string, readonly choices: ReadonlyArray<Production>,
+      readonly labeled: boolean, readonly nameStart: number,
+      readonly nameEnd: number) {}
+
+  toString() {
+    return `${this.name}${this.labeled ? '!' : ''} = ${
+        this.choices.map((p) => stringifyProduction(p)).join(' | ')};`;
+  }
+}
+
+function stringifyProduction(production: Production): string {
+  switch (production.kind) {
+    case 'literal':
+      return `"${production.value.replace(/"/g, '\\"')}"`;
+    case 'rule':
+      return production.name;
+    case 'sequence':
+      if (production.productions.length === 0) {
+        return 'ℇ';
+      }
+      return production.productions.map((p) => stringifyProduction(p))
+          .join(' ');
+    default:
+      const never: never = production;
+      throw new Error(`Unknown production kind: ${JSON.stringify(never)}`);
+  }
+}
 
 export function*
     everyCombination<A, B>(rawLefts: Iterator<A>, rawRights: Iterator<B>):
@@ -175,35 +297,6 @@ export function*
       break;
     }
     max++;
-  }
-}
-
-export class Rule {
-  constructor(
-      readonly name: string, readonly choices: ReadonlyArray<Production>,
-      readonly nameStart: number, readonly nameEnd: number) {}
-
-  toString() {
-    return `${this.name} = ${
-        this.choices.map((p) => stringifyProduction(p)).join(' | ')};`;
-  }
-}
-
-function stringifyProduction(production: Production): string {
-  switch (production.kind) {
-    case 'literal':
-      return `"${production.value.replace(/"/g, '\\"')}"`;
-    case 'rule':
-      return production.name;
-    case 'sequence':
-      if (production.productions.length === 0) {
-        return 'ℇ';
-      }
-      return production.productions.map((p) => stringifyProduction(p))
-          .join(' ');
-    default:
-      const never: never = production;
-      throw new Error(`Unknown production kind: ${JSON.stringify(never)}`);
   }
 }
 

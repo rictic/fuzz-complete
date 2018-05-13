@@ -22,6 +22,7 @@ export enum TokenType {
   colon = (2 ** 12),
   equals = (2 ** 15),
   verticalBar = (2 ** 16),
+  exclamationPoint = (2 ** 17),
 
   // Perhaps for future use.
   openParenthesis = (2 ** 6),
@@ -75,5 +76,6 @@ export const boundaryTokenTypes: {[boundaryText: string]: TokenType|
   ':': Token.type.colon,
   ';': Token.type.semicolon,
   '=': Token.type.equals,
-  '|': Token.type.verticalBar
+  '|': Token.type.verticalBar,
+  '!': Token.type.exclamationPoint,
 };
