@@ -13,16 +13,19 @@
  * An enumeration of Token types.
  */
 export enum TokenType {
-  none = 0,
-  whitespace = (2 ** 0),
-  string = (2 ** 1),
-  comment = (2 ** 2),
-  word = (2 ** 3),
-  semicolon = (2 ** 11),
-  colon = (2 ** 12),
-  equals = (2 ** 15),
-  verticalBar = (2 ** 16),
-  exclamationPoint = (2 ** 17),
+  none,
+  whitespace,
+  string,
+  comment,
+  word,
+  semicolon,
+  colon,
+  equals,
+  verticalBar,
+  exclamationPoint,
+  star,
+  plus,
+  questionMark,
 
   // Perhaps for future use.
   openParenthesis = (2 ** 6),
@@ -62,7 +65,7 @@ export class Token {
    * Test if the Token matches a given type.
    */
   is(type: TokenType) {
-    return (this.type & type) === type;
+    return this.type === type;
   }
 }
 
@@ -78,4 +81,7 @@ export const boundaryTokenTypes: {[boundaryText: string]: TokenType|
   '=': Token.type.equals,
   '|': Token.type.verticalBar,
   '!': Token.type.exclamationPoint,
+  '*': Token.type.star,
+  '+': Token.type.plus,
+  '?': Token.type.questionMark,
 };
