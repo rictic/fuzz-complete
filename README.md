@@ -52,12 +52,18 @@ There's no standard to Backus–Naur. In fuzz-complete's dialect, the first rule
 
 #### Labeled rules
 
-When generating variable names for programs, it's often the case that all you want to test is the _labeling_ of those variables, while ignoring what the labels are. For example: `var a = b + c;` is analogous to `var x = y + z;`, but not to `var a = b + b;`.
+Compare the output of these two examples:
 
-If a rule is declared an exclamation point after its name but before the equals sign, like so:
+* [Without labelling](https://fuzz.rictic.com/?input=Language+%22add+two+variables%22%3A%0A++++file+%3D+%27var+%27+identifier+%27+%3D+%27+identifier+%27+%2B+%27+identifier%3B%0A++++identifier+%3D+letters%3B%0A++++letters+%3D+%27a%27+%7C+%27b%27+%7C+%27c%27+%7C+%27d%27+%7C+%27e%27+%7C+%27f%27+%7C+%27g%27+%7C+letters+letters%3B)
+* [With labelling](https://fuzz.rictic.com/?input=Language+%22add+two+variables%22%3A%0A++++file+%3D+%27var+%27+identifier+%27+%3D+%27+identifier+%27+%2B+%27+identifier%3B%0A++++identifier%21+%3D+letters%3B%0A++++letters+%3D+%27a%27+%7C+%27b%27+%7C+%27c%27+%7C+%27d%27+%7C+%27e%27+%7C+%27f%27+%7C+%27g%27+%7C+letters+letters%3B)
+
+When generating variable names for programs, it's often the case that all you want to test is the _labeling_ of those variables, while ignoring what the labels are. For example: `var a = b + c;` is analogous to `var x = y + z;`, but distinct from `var a = b + b;`.
+
+If a rule is declared with an exclamation point after its name like so:
 
 ```
   identifier! = letter letters;
 ```
 
-Then that rule will be considered a label, and fuzz-complete will not generate sentences with that are structurally exactly the same just with the labels swapped around.
+Then when expanding that rule, fuzz-complete will consider that rule to be a label, and it will not generate sentences with that are structurally the same but with different labels.
+
