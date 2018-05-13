@@ -63,6 +63,21 @@ class ParserContext {
           return {kind: 'sequence', productions: choice};
         }
         switch (nextToken.type) {
+          case Token.type.star:
+          case Token.type.plus:
+          case Token.type.questionMark:
+            this.tokenizer.advance();
+            const latestProduction = currentChoice.pop();
+            if (latestProduction === undefined) {
+              throw LocatedError.atToken(
+                  `Unary operator must come after a production`, nextToken);
+            }
+            currentChoice.push({
+              kind: 'unaryOperator',
+              operator: this.tokenizer.slice(nextToken) as ('*' | '+' | '?'),
+              production: latestProduction
+            });
+            break;
           case Token.type.string:
             const value = this.consumeQuotedString();
             currentChoice.push({kind: 'literal', value});

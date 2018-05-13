@@ -69,4 +69,18 @@ suite('Parser', () => {
       'var a = b + c',
     ]);
   });
+
+  test('it can parse EBNF unary operators', () => {
+    const parser = new Parser();
+    const language = parser.parse(`
+        Language "ebnf unary operators":
+          start = "foo"* | start+ | "baz"? start? start* start+;
+        `);
+    assert.deepEqual(language.toString(), `
+Language "ebnf unary operators":
+  start = "foo"* | start+ | "baz"? start? start* start+;`.trim());
+    assert.deepEqual(
+        [...take(language, 10)],
+        ['', '', '', 'foo', '', 'baz', 'foofoo', '', '', 'foofoofoo']);
+  });
 });
