@@ -13,8 +13,7 @@ export type Production = {
 }|{
   kind: 'sequence',
   productions: Production[],
-};
-
+}|{kind: 'unaryOperator', operator: '*' | '?' | '+', production: Production};
 
 
 export class Language {
@@ -54,6 +53,9 @@ export class Language {
               `Rule not declared`, production.offsetStart,
               production.offsetEnd);
         }
+        return;
+      case 'unaryOperator':
+        this.validateProduction(production.production, ruleNames);
         return;
       default:
         const never: never = production;
@@ -95,6 +97,13 @@ function stringifyProduction(production: Production): string {
       }
       return production.productions.map((p) => stringifyProduction(p))
           .join(' ');
+    case 'unaryOperator':
+      if (production.production.kind === 'sequence') {
+        return `(${stringifyProduction(production.production)})${
+            production.operator}`;
+      }
+      return `${stringifyProduction(production.production)}${
+          production.operator}`;
     default:
       const never: never = production;
       throw new Error(`Unknown production kind: ${JSON.stringify(never)}`);

@@ -17,6 +17,9 @@ function Ref(name: string): Production {
 function Sequence(...productions: Production[]): Production {
   return {kind: 'sequence', productions};
 }
+function Op(operator: '+'|'?'|'*', production: Production): Production {
+  return {kind: 'unaryOperator', operator, production};
+}
 const Empty = Sequence();
 
 
@@ -153,5 +156,73 @@ suite('language with one labeled rule', () => {
     assert.deepEqual(
         [...take(labelled, 10)],
         ['', 'a', 'aa', 'ab', 'aaa', 'aab', 'aba', 'abb', 'abc', 'aaaa']);
+  });
+});
+
+suite('EBNF unary operators', () => {
+  suite('the + operator', () => {
+    const fooPlusBar = new Language('foo+bar', [
+      NewRule('start', [Sequence(Op('+', Literal('foo')), Literal('bar'))])
+    ]);
+
+    test('toString()', () => {
+      assert.deepEqual(fooPlusBar.toString(), `
+Language "foo+bar":
+  start = "foo"+ "bar";
+          `.trim());
+    });
+
+    test('generates the first few members', () => {
+      assert.deepEqual([...take(fooPlusBar, 5)], [
+        'foobar',
+        'foofoobar',
+        'foofoofoobar',
+        'foofoofoofoobar',
+        'foofoofoofoofoobar',
+      ]);
+    });
+  });
+
+  suite('the * operator', () => {
+    const fooPlusBar = new Language('foo*bar', [
+      NewRule('start', [Sequence(Op('*', Literal('foo')), Literal('bar'))])
+    ]);
+
+    test('toString()', () => {
+      assert.deepEqual(fooPlusBar.toString(), `
+Language "foo*bar":
+  start = "foo"* "bar";
+          `.trim());
+    });
+
+    test('generates the first few members', () => {
+      assert.deepEqual([...take(fooPlusBar, 5)], [
+        'bar',
+        'foobar',
+        'foofoobar',
+        'foofoofoobar',
+        'foofoofoofoobar',
+      ]);
+    });
+  });
+
+  suite('the ? operator', () => {
+    const fooPlusBar = new Language('foo?bar', [
+      NewRule('start', [Sequence(Op('?', Literal('foo')), Literal('bar'))])
+    ]);
+
+    test('toString()', () => {
+      assert.deepEqual(fooPlusBar.toString(), `
+Language "foo?bar":
+  start = "foo"? "bar";
+          `.trim());
+    });
+
+    test('generates the first few members', () => {
+      assert.deepEqual([...take(fooPlusBar, 5)], [
+        'bar',
+        'foobar',
+      ]);
+    });
   });
 });

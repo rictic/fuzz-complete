@@ -16,7 +16,12 @@ class Literal implements LowLevelProduction {
 }
 
 class Sequence implements LowLevelProduction {
-  constructor(private readonly sequence: LowLevelProduction[]) {}
+  constructor(private sequence: LowLevelProduction[] = []) {}
+
+  // delayed initialization is necessary because of cycles
+  initialize(sequence: LowLevelProduction[]) {
+    this.sequence = sequence;
+  }
 
   *
       generate(expandLabels: boolean):
@@ -44,9 +49,9 @@ class Sequence implements LowLevelProduction {
 }
 
 class Choice implements LowLevelProduction {
-  private choices: LowLevelProduction[] = [];
+  constructor(private choices: LowLevelProduction[] = []) {}
 
-  // delayed initialization is necessary
+  // delayed initialization is necessary because of cycles
   initialize(choices: LowLevelProduction[]) {
     this.choices = choices;
   }
@@ -89,6 +94,8 @@ class LabeledProduction implements LowLevelProduction {
     }
   }
 }
+
+const Empty = new Sequence([]);
 
 export class Generator {
   private containsLabels = false;
@@ -188,6 +195,26 @@ export class Generator {
       case 'rule':
         return this.convertRule(
             this.language.rules.find((r) => r.name === production.name)!);
+      case 'unaryOperator':
+        const innerGenerator = this.convertProduction(production.production);
+        switch (production.operator) {
+          case '*': {
+            const result = new Choice();
+            result.initialize([Empty, new Sequence([innerGenerator, result])]);
+            return result;
+          }
+          case '+': {
+            const result = new Sequence();
+            result.initialize([innerGenerator, new Choice([Empty, result])]);
+            return result;
+          }
+          case '?': {
+            return new Choice([Empty, innerGenerator]);
+          }
+          default:
+            const never: never = production.operator;
+            throw new Error(`Found unknown unary operator: ${never}`);
+        }
       default:
         const never: never = production;
         throw new Error(`Unknown production kind: ${JSON.stringify(never)}`);
