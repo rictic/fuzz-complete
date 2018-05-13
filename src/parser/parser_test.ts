@@ -1,4 +1,7 @@
 import {assert} from 'chai';
+
+import {take} from '../util';
+
 import {Parser} from './parser';
 
 suite('Parser', () => {
@@ -46,5 +49,24 @@ suite('Parser', () => {
             `  start = "a" bOrCStar;
   bOrC = "b" | "c";
   bOrCStar = ℇ | bOrC bOrCStar;`);
+  });
+
+  test('it can parse labelled rules', () => {
+    const parser = new Parser();
+    const language = parser.parse(`
+        Language "addition of labels":
+          start = 'var ' identifier ' = ' identifier ' + ' identifier;
+          identifier! = "a" | "b" | "c" | "d" | "e";
+        `.trim());
+    assert.deepEqual(language.toString(), `Language "addition of labels":
+  start = "var " identifier " = " identifier " + " identifier;
+  identifier! = "a" | "b" | "c" | "d" | "e";`);
+    assert.deepEqual([...take(language, 10)], [
+      'var a = a + a',
+      'var a = a + b',
+      'var a = b + a',
+      'var a = b + b',
+      'var a = b + c',
+    ]);
   });
 });
