@@ -161,38 +161,56 @@ Language "uses parens":
     ]);
   });
 
-  suite('validation', () => {
-    test('languages with references to undeclared rules', () => {
-      const langSources = [
-        `Language "foo": start = honk;`,
-        `Language "foo": start = 'lol' 'what'; foo = honk;`,
-      ];
-      for (const langSource of langSources) {
-        const result = tryParse(langSource);
-        if (result.successful) {
-          throw new Error(
-              `Did not expect ${JSON.stringify(langSource)} to validate.`);
-        }
-        assert.deepEqual(result.error.originalMessage, 'Rule not declared');
+  suite('errors', () => {
+    function assertFailsWithError(langSource: string, errorMessage: string) {
+      const result = tryParse(langSource);
+      if (result.successful) {
+        throw new Error(`Did not expect ${
+            JSON.stringify(
+                langSource)} to parse and validate successfully. Expected error: ${
+            errorMessage}`);
       }
+      assert.deepEqual(result.error.originalMessage, errorMessage);
+    }
+    suite('parsing', () => {
+      test('gives good error messages for common mistakes', () => {
+        assertFailsWithError(
+            ``, 'Unexpected end of input, expected word `Language`');
+        assertFailsWithError(
+            `Language foo:`,
+            'Expected a string literal but found an identifier');
+        assertFailsWithError(
+            `Language "foo": bar = "bar"`,
+            'Unexpected end of input, missing semicolon?');
+        assertFailsWithError(
+            `Language "foo": bar = "bar" baz = "baz;`,
+            'Did not expect to find an equals sign inside a rule definition. ' +
+                'Is the previous rule missing its trailing semicolon?');
+      });
     });
 
-    test('languages that loop endlessly', () => {
-      const langSources = [
-        `Language "loop": start = start;`,
-        `Language "loop": start = "a" start;`,
-        `Language "loop": foo = "a" bar; bar = "b" baz; baz = "c" foo;`,
-      ];
-      for (const langSource of langSources) {
-        const result = tryParse(langSource);
-        if (result.successful) {
-          throw new Error(
-              `Did not expect ${JSON.stringify(langSource)} to validate.`);
+    suite('validation', () => {
+      test('languages with references to undeclared rules', () => {
+        const langSources = [
+          `Language "foo": start = honk;`,
+          `Language "foo": start = 'lol' 'what'; foo = honk;`,
+        ];
+        for (const langSource of langSources) {
+          assertFailsWithError(langSource, 'Rule not declared');
         }
-        assert.deepEqual(
-            result.error.originalMessage,
-            'Infinite loop detected in leftmost choice');
-      }
+      });
+
+      test('languages that loop endlessly', () => {
+        const langSources = [
+          `Language "loop": start = start;`,
+          `Language "loop": start = "a" start;`,
+          `Language "loop": foo = "a" bar; bar = "b" baz; baz = "c" foo;`,
+        ];
+        for (const langSource of langSources) {
+          assertFailsWithError(
+              langSource, 'Infinite loop detected in leftmost choice');
+        }
+      });
     });
   });
 });

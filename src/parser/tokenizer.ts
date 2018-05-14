@@ -15,7 +15,6 @@ import {boundaryTokenTypes, Token} from './token.js';
  * A set of common RegExp matchers for tokenizing.
  */
 const matcher = {
-  whitespace: /\s/,
   whitespaceGreedy: /(\s+)/g,
   commentGreedy: /(\*\/)/g,
   boundary: /[\(\)'";:=\s\|\!\+\*\?]/,
@@ -23,7 +22,7 @@ const matcher = {
 };
 
 
-class Tokenizer {
+export class Tokenizer {
   /**
    * Tracks the position of the tokenizer in the source.
    * Also the default head of the Token linked list.
@@ -126,7 +125,7 @@ class Tokenizer {
 
     if (this.offset >= this.text.length) {
       return null;
-    } else if (matcher.whitespace.test(character)) {
+    } else if (/\s/.test(character)) {
       token = this.tokenizeWhitespace(this.offset);
     } else if (matcher.stringBoundary.test(character)) {
       token = this.tokenizeString(this.offset);
@@ -255,5 +254,3 @@ class Tokenizer {
     return new Token(type, offset, offset + 1);
   }
 }
-
-export {Tokenizer};

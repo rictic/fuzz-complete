@@ -32,6 +32,24 @@ export enum TokenType {
   closeParenthesis = (2 ** 7),
 }
 
+export const TokenTypeDescription: ReadonlyMap<TokenType, string> =
+    new Map<TokenType, string>([
+      [TokenType.none, 'an empty file'],
+      [TokenType.whitespace, 'whitespace'],
+      [TokenType.string, 'a string literal'],
+      [TokenType.comment, 'a comment'],
+      [TokenType.word, 'an identifier'],
+      [TokenType.semicolon, 'a semicolon'],
+      [TokenType.colon, 'a colon'],
+      [TokenType.equals, 'an equals sign'],
+      [TokenType.verticalBar, 'a vertical bar'],
+      [TokenType.exclamationPoint, 'an exclamation point'],
+      [TokenType.star, 'a star character'],
+      [TokenType.plus, 'a plus character'],
+      [TokenType.questionMark, 'a question mark'],
+      [TokenType.openParenthesis, 'an open parenthesis'],
+      [TokenType.closeParenthesis, 'a close parenthesis'],
+    ]);
 
 /**
  * Class that describes individual tokens as produced by the Tokenizer.

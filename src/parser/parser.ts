@@ -1,6 +1,6 @@
 import {Language, Production, Rule} from './ast.js';
 import {LocatedError, ParseError} from './error.js';
-import {Token, TokenType} from './token.js';
+import {Token, TokenType, TokenTypeDescription} from './token.js';
 import {Tokenizer} from './tokenizer.js';
 
 type Result<S, F> = {
@@ -30,7 +30,7 @@ class ParserContext {
     this.skipWhitespace();
     this.consumeWordWithValue('Language');
     const stringText = this.consumeQuotedString();
-    this.consume(Token.type.colon, 'colon');
+    this.consume(Token.type.colon);
     return stringText;
   }
 
@@ -46,7 +46,7 @@ class ParserContext {
         this.tokenizer.advance();
       }
       this.skipWhitespace();
-      this.consume(Token.type.equals, 'equals');
+      this.consume(Token.type.equals);
       rules.push(new Rule(
           this.tokenizer.slice(nameToken), this.parseProduction(), isLabelRule,
           nameToken.start, nameToken.end));
@@ -132,8 +132,15 @@ class ParserContext {
 
           break parseChoicesLoop;
         default:
-          throw ParseError.atToken(
-              `Unexpected token inside of rule definition`, nextToken);
+          let message = `Did not expect to find ${
+              TokenTypeDescription.get(
+                  nextToken.type)} inside a rule definition.`;
+          if (nextToken.type === TokenType.equals) {
+            // special case a common mistake
+            message =
+                `Did not expect to find an equals sign inside a rule definition. Is the previous rule missing its trailing semicolon?`;
+          }
+          throw ParseError.atToken(message, nextToken);
       }
     }
     return {kind: 'choice', choices};
@@ -149,7 +156,7 @@ class ParserContext {
   }
 
   consumeQuotedString() {
-    const token = this.consume(Token.type.string, 'quoted string');
+    const token = this.consume(Token.type.string);
     const escapedText =
         this.tokenizer.text.slice(token.start + 1, token.end - 1);
     return escapedText.replace(/\\n/g, '\n')
@@ -160,14 +167,20 @@ class ParserContext {
         .replace(/\\(.)/g, '$1');
   }
 
-  consume(tokenType: TokenType, kind: string) {
+  consume(
+      tokenType: TokenType,
+      description = TokenTypeDescription.get(tokenType)!,
+  ) {
     const token = this.tokenizer.currentToken;
     if (!token) {
       throw ParseError.atCurrentLocation(
-          `Unexpected end of input, expected ${kind}`, this.tokenizer);
+          `Unexpected end of input, expected ${description}`, this.tokenizer);
     }
     if (!token.is(tokenType)) {
-      throw ParseError.atToken(`Expected ${kind}`, token);
+      throw ParseError.atToken(
+          `Expected ${description} but found ${
+              TokenTypeDescription.get(token.type)}`,
+          token);
     }
     this.tokenizer.advance();
     return token;
