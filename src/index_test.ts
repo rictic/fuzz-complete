@@ -71,7 +71,7 @@ suite('it can fuzz itself', () => {
     ]);
   });
 
-  test('the output parses, even if it does not validate', function() {
+  test('various properties of the generated languages', function() {
     let numToGenerate;
     if (process.env['SLOW_TEST']) {
       numToGenerate = 1_000_000;
@@ -91,6 +91,7 @@ suite('it can fuzz itself', () => {
         successCount++;
         const stringValue = result.value.toString();
         const reparseResult = tryParse(stringValue);
+        // Test that we can stringify and parse again.
         if (!reparseResult.successful) {
           throw new Error(`
             This language:
@@ -99,12 +100,17 @@ suite('it can fuzz itself', () => {
               ${stringValue}
             Which failed to parse with error: ${reparseResult.error}`);
         }
+        // Test that restringifying and reparsing is stable, it produces the
+        // same thing as the first stringification.
         assert.deepEqual(
             parse(reparseResult.value.toString()).toString(), stringValue);
+
+        // Check for infinite loops (should have been caught in validation).
+        [...take(result.value, 10)];
       }
     }
     assert.isAtLeast(
-        successCount / numToGenerate, 0.05,
-        `Too many generated languages did not parse!`);
+        successCount / numToGenerate, 0.03,
+        `Too many generated languages did not validate!`);
   });
 });
