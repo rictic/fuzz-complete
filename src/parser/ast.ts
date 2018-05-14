@@ -150,7 +150,11 @@ function stringifyProduction(
     production: Production, parenthesize = false): string {
   switch (production.kind) {
     case 'literal':
-      return `"${production.value.replace(/"/g, '\\"')}"`;
+      const text = production.value.replace(/\\/g, '\\\\')
+                       .replace(/"/g, '\\"')
+                       .replace(/\n/g, '\\n')
+                       .replace(/\t/g, '\\t');
+      return `"${text}"`;
     case 'rule':
       return production.name;
     case 'sequence': {

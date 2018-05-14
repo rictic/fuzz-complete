@@ -150,7 +150,14 @@ class ParserContext {
 
   consumeQuotedString() {
     const token = this.consume(Token.type.string, 'quoted string');
-    return this.tokenizer.text.slice(token.start + 1, token.end - 1);
+    const escapedText =
+        this.tokenizer.text.slice(token.start + 1, token.end - 1);
+    return escapedText.replace(/\\n/g, '\n')
+        .replace(/\\t/g, '\t')
+        .replace(/\\\\/g, '\\')
+        .replace(/\\"/g, '"')
+        .replace(/\\'/g, '\'')
+        .replace(/\\(.)/g, '$1');
   }
 
   consume(tokenType: TokenType, kind: string) {

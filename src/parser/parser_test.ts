@@ -69,6 +69,19 @@ suite('Parser', () => {
     ]);
   });
 
+  test('string escapes', () => {
+    // Double-escaping makes this tricky to read.
+    const language = parse(`
+      Language "string escapes":
+        start = "\\"" '\\'' "\\\\" "\\n" "\\t" "\\z";
+    `);
+    assert.deepEqual(language.toString(), `
+Language "string escapes":
+  start = "\\"" "'" "\\\\" "\\n" "\\t" "z";
+`.trim());
+    assert.deepEqual([...language], [`"'\\\n\tz`]);
+  });
+
   test('it can handle multiple labels', () => {
     const language = parse(`
         Language "multiple labels":
