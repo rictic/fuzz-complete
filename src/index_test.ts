@@ -72,14 +72,35 @@ suite('it can fuzz itself', () => {
   });
 
   test('the output parses, even if it does not validate', () => {
-    for (const generatedLangDef of take(languageLanguage, 10000)) {
-      const result = new Parser().tryParse(generatedLangDef);
+    const parser = new Parser();
+    const numToGenerate = 10_000;
+    let successCount = 0;
+    for (const generatedLangDef of take(languageLanguage, numToGenerate)) {
+      const result = parser.tryParse(generatedLangDef);
       if (!result.successful) {
         assert.instanceOf(
             result.error, ValidationError,
             `Expected all generated languages to parse, but this one did not: \n    ${
                 generatedLangDef}\n`);
+      } else {
+        successCount++;
+        const stringValue = result.value.toString();
+        const reparseResult = parser.tryParse(stringValue);
+        if (!reparseResult.successful) {
+          throw new Error(`
+            This language:
+              ${generatedLangDef}
+            When parsed and stringified, yielded:
+              ${stringValue}
+            Which failed to parse with error: ${reparseResult.error}`);
+        }
+        assert.deepEqual(
+            parser.parse(reparseResult.value.toString()).toString(),
+            stringValue);
       }
     }
+    assert.isAtLeast(
+        successCount / numToGenerate, 0.10,
+        `Too many generated languages did not parse!`);
   });
 });
