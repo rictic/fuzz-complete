@@ -10,14 +10,70 @@ suite('it can fuzz itself', () => {
       start = 'Language "generated": ' rule*;
       string = '"' stringContents '"';
       rule = word '!'? ' = ' production '; ';
-      production = string ' ' | word ' ' | production+;
+      production =
+          (string ' ' | /* literal */
+           word ' ' | /* rule reference */
+           production ' | ' production | /* choice */
+           '(' production ')' | /* parethesized expression */
+           production+ /* sequence */
+          ) suffix* /* unary operator */;
+      suffix = '?' | '*' | '+';
       word! = letter+;
       stringContents = letter*;
       letter = 'a' | 'b' | 'c';
   `;
   const languageLanguage = parse(languageText);
+
+  test('various properties of the generated languages', function() {
+    let numToGenerate;
+    if (process.env['SLOW_TEST']) {
+      numToGenerate = 1_000_000;
+      this.timeout(4 * 60 * 1000);
+    } else {
+      numToGenerate = 10_000;
+    }
+    let successCount = 0;
+    for (const generatedLangDef of take(languageLanguage, numToGenerate)) {
+      const result = tryParse(generatedLangDef);
+      if (!result.successful) {
+        assert.instanceOf(
+            result.error, ValidationError,
+            `Expected all generated languages to parse, but this one did not: \n    ${
+                generatedLangDef}\n`);
+      } else {
+        successCount++;
+        const stringValue = result.value.toString();
+        const reparseResult = tryParse(stringValue);
+        // Test that we can stringify and parse again.
+        if (!reparseResult.successful) {
+          throw new Error(`
+            This language:
+              ${generatedLangDef}
+            When parsed and stringified, yielded:
+              ${stringValue}
+            Which failed to parse with error: ${reparseResult.error}`);
+        }
+        // Test that restringifying and reparsing is stable, it produces the
+        // same thing as the first stringification.
+        assert.deepEqual(
+            parse(reparseResult.value.toString()).toString(), stringValue);
+
+        // Check for infinite loops (should have been caught in validation).
+        try {
+          [...take(result.value, 10)];
+        } catch (e) {
+          throw new Error(
+              `failed to generate values for language ${generatedLangDef}`);
+        }
+      }
+    }
+    assert.isAtLeast(
+        successCount / numToGenerate, 0.03,
+        `Too many generated languages did not validate!`);
+  });
+
   test('the first 50 results seem reasonable', () => {
-    assert.deepEqual([...take(languageLanguage, 50)], [
+    assert.deepEqual([...take(languageLanguage, 500)], [
       'Language "generated": ',
       'Language "generated": a = "" ; ',
       'Language "generated": a! = "" ; ',
@@ -67,50 +123,457 @@ suite('it can fuzz itself', () => {
       'Language "generated": a = a ; a = "" ; b = "" ; ',
       'Language "generated": a = a ; b = "" ; a = "" ; ',
       'Language "generated": a = a ; b = "" ; b = "" ; ',
-      'Language "generated": a = a ; b = "" ; aa = "" ; '
+      'Language "generated": a = a ; b = "" ; aa = "" ; ',
+      'Language "generated": a = b ; a = "" ; a = "" ; ',
+      'Language "generated": a = b ; a = "" ; b = "" ; ',
+      'Language "generated": a = b ; a = "" ; aa = "" ; ',
+      'Language "generated": a = b ; b = "" ; a = "" ; ',
+      'Language "generated": a = b ; b = "" ; b = "" ; ',
+      'Language "generated": a = b ; b = "" ; aa = "" ; ',
+      'Language "generated": a = b ; aa = "" ; a = "" ; ',
+      'Language "generated": a = b ; aa = "" ; b = "" ; ',
+      'Language "generated": a = b ; aa = "" ; aa = "" ; ',
+      'Language "generated": a = b ; aa = "" ; ba = "" ; ',
+      'Language "generated": a! = a ; a = "" ; a = "" ; ',
+      'Language "generated": a! = a ; a = "" ; b = "" ; ',
+      'Language "generated": a! = a ; b = "" ; a = "" ; ',
+      'Language "generated": a! = a ; b = "" ; b = "" ; ',
+      'Language "generated": a! = a ; b = "" ; aa = "" ; ',
+      'Language "generated": a! = b ; a = "" ; a = "" ; ',
+      'Language "generated": a! = b ; a = "" ; b = "" ; ',
+      'Language "generated": a! = b ; a = "" ; aa = "" ; ',
+      'Language "generated": a! = b ; b = "" ; a = "" ; ',
+      'Language "generated": a! = b ; b = "" ; b = "" ; ',
+      'Language "generated": a! = b ; b = "" ; aa = "" ; ',
+      'Language "generated": a! = b ; aa = "" ; a = "" ; ',
+      'Language "generated": a! = b ; aa = "" ; b = "" ; ',
+      'Language "generated": a! = b ; aa = "" ; aa = "" ; ',
+      'Language "generated": a! = b ; aa = "" ; ba = "" ; ',
+      'Language "generated": a = "" ?; ',
+      'Language "generated": a = "" ?; a = "" ; ',
+      'Language "generated": a = "" ?; b = "" ; ',
+      'Language "generated": a = "" ?; a! = "" ; ',
+      'Language "generated": a = "" ?; b! = "" ; ',
+      'Language "generated": a = "" ?; a = "" ; a = "" ; ',
+      'Language "generated": a = "" ?; a = "" ; b = "" ; ',
+      'Language "generated": a = "" ?; b = "" ; a = "" ; ',
+      'Language "generated": a = "" ?; b = "" ; b = "" ; ',
+      'Language "generated": a = "" ?; b = "" ; aa = "" ; ',
+      'Language "generated": a = "" ; a! = "" ; a = "" ; ',
+      'Language "generated": a = "" ; a! = "" ; b = "" ; ',
+      'Language "generated": a = "" ; b! = "" ; a = "" ; ',
+      'Language "generated": a = "" ; b! = "" ; b = "" ; ',
+      'Language "generated": a = "" ; b! = "" ; aa = "" ; ',
+      'Language "generated": a! = "" ; a! = "" ; a = "" ; ',
+      'Language "generated": a! = "" ; a! = "" ; b = "" ; ',
+      'Language "generated": a! = "" ; b! = "" ; a = "" ; ',
+      'Language "generated": a! = "" ; b! = "" ; b = "" ; ',
+      'Language "generated": a! = "" ; b! = "" ; aa = "" ; ',
+      'Language "generated": a = a ; a! = "" ; a = "" ; ',
+      'Language "generated": a = a ; a! = "" ; b = "" ; ',
+      'Language "generated": a = a ; b! = "" ; a = "" ; ',
+      'Language "generated": a = a ; b! = "" ; b = "" ; ',
+      'Language "generated": a = a ; b! = "" ; aa = "" ; ',
+      'Language "generated": a = b ; a! = "" ; a = "" ; ',
+      'Language "generated": a = b ; a! = "" ; b = "" ; ',
+      'Language "generated": a = b ; a! = "" ; aa = "" ; ',
+      'Language "generated": a = b ; b! = "" ; a = "" ; ',
+      'Language "generated": a = b ; b! = "" ; b = "" ; ',
+      'Language "generated": a = b ; b! = "" ; aa = "" ; ',
+      'Language "generated": a = b ; aa! = "" ; a = "" ; ',
+      'Language "generated": a = b ; aa! = "" ; b = "" ; ',
+      'Language "generated": a = b ; aa! = "" ; aa = "" ; ',
+      'Language "generated": a = b ; aa! = "" ; ba = "" ; ',
+      'Language "generated": a! = a ; a! = "" ; a = "" ; ',
+      'Language "generated": a! = a ; a! = "" ; b = "" ; ',
+      'Language "generated": a! = a ; b! = "" ; a = "" ; ',
+      'Language "generated": a! = a ; b! = "" ; b = "" ; ',
+      'Language "generated": a! = a ; b! = "" ; aa = "" ; ',
+      'Language "generated": a! = b ; a! = "" ; a = "" ; ',
+      'Language "generated": a! = b ; a! = "" ; b = "" ; ',
+      'Language "generated": a! = b ; a! = "" ; aa = "" ; ',
+      'Language "generated": a! = b ; b! = "" ; a = "" ; ',
+      'Language "generated": a! = b ; b! = "" ; b = "" ; ',
+      'Language "generated": a! = b ; b! = "" ; aa = "" ; ',
+      'Language "generated": a! = b ; aa! = "" ; a = "" ; ',
+      'Language "generated": a! = b ; aa! = "" ; b = "" ; ',
+      'Language "generated": a! = b ; aa! = "" ; aa = "" ; ',
+      'Language "generated": a! = b ; aa! = "" ; ba = "" ; ',
+      'Language "generated": a = "" ?; a! = "" ; a = "" ; ',
+      'Language "generated": a = "" ?; a! = "" ; b = "" ; ',
+      'Language "generated": a = "" ?; b! = "" ; a = "" ; ',
+      'Language "generated": a = "" ?; b! = "" ; b = "" ; ',
+      'Language "generated": a = "" ?; b! = "" ; aa = "" ; ',
+      'Language "generated": a! = "" ?; ',
+      'Language "generated": a! = "" ?; a = "" ; ',
+      'Language "generated": a! = "" ?; b = "" ; ',
+      'Language "generated": a! = "" ?; a! = "" ; ',
+      'Language "generated": a! = "" ?; b! = "" ; ',
+      'Language "generated": a! = "" ?; a = "" ; a = "" ; ',
+      'Language "generated": a! = "" ?; a = "" ; b = "" ; ',
+      'Language "generated": a! = "" ?; b = "" ; a = "" ; ',
+      'Language "generated": a! = "" ?; b = "" ; b = "" ; ',
+      'Language "generated": a! = "" ?; b = "" ; aa = "" ; ',
+      'Language "generated": a! = "" ?; a! = "" ; a = "" ; ',
+      'Language "generated": a! = "" ?; a! = "" ; b = "" ; ',
+      'Language "generated": a! = "" ?; b! = "" ; a = "" ; ',
+      'Language "generated": a! = "" ?; b! = "" ; b = "" ; ',
+      'Language "generated": a! = "" ?; b! = "" ; aa = "" ; ',
+      'Language "generated": a = "" ; a = a ; ',
+      'Language "generated": a = "" ; a = b ; ',
+      'Language "generated": a = "" ; b = a ; ',
+      'Language "generated": a = "" ; b = b ; ',
+      'Language "generated": a = "" ; b = aa ; ',
+      'Language "generated": a! = "" ; a = a ; ',
+      'Language "generated": a! = "" ; a = b ; ',
+      'Language "generated": a! = "" ; b = a ; ',
+      'Language "generated": a! = "" ; b = b ; ',
+      'Language "generated": a! = "" ; b = aa ; ',
+      'Language "generated": a = a ; a = a ; ',
+      'Language "generated": a = a ; a = b ; ',
+      'Language "generated": a = a ; b = a ; ',
+      'Language "generated": a = a ; b = b ; ',
+      'Language "generated": a = a ; b = aa ; ',
+      'Language "generated": a = b ; a = a ; ',
+      'Language "generated": a = b ; a = b ; ',
+      'Language "generated": a = b ; a = aa ; ',
+      'Language "generated": a = b ; b = a ; ',
+      'Language "generated": a = b ; b = b ; ',
+      'Language "generated": a = b ; b = aa ; ',
+      'Language "generated": a = b ; aa = a ; ',
+      'Language "generated": a = b ; aa = b ; ',
+      'Language "generated": a = b ; aa = aa ; ',
+      'Language "generated": a = b ; aa = ba ; ',
+      'Language "generated": a! = a ; a = a ; ',
+      'Language "generated": a! = a ; a = b ; ',
+      'Language "generated": a! = a ; b = a ; ',
+      'Language "generated": a! = a ; b = b ; ',
+      'Language "generated": a! = a ; b = aa ; ',
+      'Language "generated": a! = b ; a = a ; ',
+      'Language "generated": a! = b ; a = b ; ',
+      'Language "generated": a! = b ; a = aa ; ',
+      'Language "generated": a! = b ; b = a ; ',
+      'Language "generated": a! = b ; b = b ; ',
+      'Language "generated": a! = b ; b = aa ; ',
+      'Language "generated": a! = b ; aa = a ; ',
+      'Language "generated": a! = b ; aa = b ; ',
+      'Language "generated": a! = b ; aa = aa ; ',
+      'Language "generated": a! = b ; aa = ba ; ',
+      'Language "generated": a = "" ?; a = a ; ',
+      'Language "generated": a = "" ?; a = b ; ',
+      'Language "generated": a = "" ?; b = a ; ',
+      'Language "generated": a = "" ?; b = b ; ',
+      'Language "generated": a = "" ?; b = aa ; ',
+      'Language "generated": a! = "" ?; a = a ; ',
+      'Language "generated": a! = "" ?; a = b ; ',
+      'Language "generated": a! = "" ?; b = a ; ',
+      'Language "generated": a! = "" ?; b = b ; ',
+      'Language "generated": a! = "" ?; b = aa ; ',
+      'Language "generated": a = a ?; ',
+      'Language "generated": a = b ?; ',
+      'Language "generated": a = a ?; a = "" ; ',
+      'Language "generated": a = a ?; b = "" ; ',
+      'Language "generated": a = b ?; a = "" ; ',
+      'Language "generated": a = b ?; b = "" ; ',
+      'Language "generated": a = b ?; aa = "" ; ',
+      'Language "generated": a = a ?; a! = "" ; ',
+      'Language "generated": a = a ?; b! = "" ; ',
+      'Language "generated": a = b ?; a! = "" ; ',
+      'Language "generated": a = b ?; b! = "" ; ',
+      'Language "generated": a = b ?; aa! = "" ; ',
+      'Language "generated": a = a ?; a = "" ; a = "" ; ',
+      'Language "generated": a = a ?; a = "" ; b = "" ; ',
+      'Language "generated": a = a ?; b = "" ; a = "" ; ',
+      'Language "generated": a = a ?; b = "" ; b = "" ; ',
+      'Language "generated": a = a ?; b = "" ; aa = "" ; ',
+      'Language "generated": a = b ?; a = "" ; a = "" ; ',
+      'Language "generated": a = b ?; a = "" ; b = "" ; ',
+      'Language "generated": a = b ?; a = "" ; aa = "" ; ',
+      'Language "generated": a = b ?; b = "" ; a = "" ; ',
+      'Language "generated": a = b ?; b = "" ; b = "" ; ',
+      'Language "generated": a = b ?; b = "" ; aa = "" ; ',
+      'Language "generated": a = b ?; aa = "" ; a = "" ; ',
+      'Language "generated": a = b ?; aa = "" ; b = "" ; ',
+      'Language "generated": a = b ?; aa = "" ; aa = "" ; ',
+      'Language "generated": a = b ?; aa = "" ; ba = "" ; ',
+      'Language "generated": a = a ?; a! = "" ; a = "" ; ',
+      'Language "generated": a = a ?; a! = "" ; b = "" ; ',
+      'Language "generated": a = a ?; b! = "" ; a = "" ; ',
+      'Language "generated": a = a ?; b! = "" ; b = "" ; ',
+      'Language "generated": a = a ?; b! = "" ; aa = "" ; ',
+      'Language "generated": a = b ?; a! = "" ; a = "" ; ',
+      'Language "generated": a = b ?; a! = "" ; b = "" ; ',
+      'Language "generated": a = b ?; a! = "" ; aa = "" ; ',
+      'Language "generated": a = b ?; b! = "" ; a = "" ; ',
+      'Language "generated": a = b ?; b! = "" ; b = "" ; ',
+      'Language "generated": a = b ?; b! = "" ; aa = "" ; ',
+      'Language "generated": a = b ?; aa! = "" ; a = "" ; ',
+      'Language "generated": a = b ?; aa! = "" ; b = "" ; ',
+      'Language "generated": a = b ?; aa! = "" ; aa = "" ; ',
+      'Language "generated": a = b ?; aa! = "" ; ba = "" ; ',
+      'Language "generated": a = a ?; a = a ; ',
+      'Language "generated": a = a ?; a = b ; ',
+      'Language "generated": a = a ?; b = a ; ',
+      'Language "generated": a = a ?; b = b ; ',
+      'Language "generated": a = a ?; b = aa ; ',
+      'Language "generated": a = b ?; a = a ; ',
+      'Language "generated": a = b ?; a = b ; ',
+      'Language "generated": a = b ?; a = aa ; ',
+      'Language "generated": a = b ?; b = a ; ',
+      'Language "generated": a = b ?; b = b ; ',
+      'Language "generated": a = b ?; b = aa ; ',
+      'Language "generated": a = b ?; aa = a ; ',
+      'Language "generated": a = b ?; aa = b ; ',
+      'Language "generated": a = b ?; aa = aa ; ',
+      'Language "generated": a = b ?; aa = ba ; ',
+      'Language "generated": a = "" ; a = a ; a = "" ; ',
+      'Language "generated": a = "" ; a = a ; b = "" ; ',
+      'Language "generated": a = "" ; a = b ; a = "" ; ',
+      'Language "generated": a = "" ; a = b ; b = "" ; ',
+      'Language "generated": a = "" ; a = b ; aa = "" ; ',
+      'Language "generated": a = "" ; b = a ; a = "" ; ',
+      'Language "generated": a = "" ; b = a ; b = "" ; ',
+      'Language "generated": a = "" ; b = a ; aa = "" ; ',
+      'Language "generated": a = "" ; b = b ; a = "" ; ',
+      'Language "generated": a = "" ; b = b ; b = "" ; ',
+      'Language "generated": a = "" ; b = b ; aa = "" ; ',
+      'Language "generated": a = "" ; b = aa ; a = "" ; ',
+      'Language "generated": a = "" ; b = aa ; b = "" ; ',
+      'Language "generated": a = "" ; b = aa ; aa = "" ; ',
+      'Language "generated": a = "" ; b = aa ; ba = "" ; ',
+      'Language "generated": a! = "" ; a = a ; a = "" ; ',
+      'Language "generated": a! = "" ; a = a ; b = "" ; ',
+      'Language "generated": a! = "" ; a = b ; a = "" ; ',
+      'Language "generated": a! = "" ; a = b ; b = "" ; ',
+      'Language "generated": a! = "" ; a = b ; aa = "" ; ',
+      'Language "generated": a! = "" ; b = a ; a = "" ; ',
+      'Language "generated": a! = "" ; b = a ; b = "" ; ',
+      'Language "generated": a! = "" ; b = a ; aa = "" ; ',
+      'Language "generated": a! = "" ; b = b ; a = "" ; ',
+      'Language "generated": a! = "" ; b = b ; b = "" ; ',
+      'Language "generated": a! = "" ; b = b ; aa = "" ; ',
+      'Language "generated": a! = "" ; b = aa ; a = "" ; ',
+      'Language "generated": a! = "" ; b = aa ; b = "" ; ',
+      'Language "generated": a! = "" ; b = aa ; aa = "" ; ',
+      'Language "generated": a! = "" ; b = aa ; ba = "" ; ',
+      'Language "generated": a = a ; a = a ; a = "" ; ',
+      'Language "generated": a = a ; a = a ; b = "" ; ',
+      'Language "generated": a = a ; a = b ; a = "" ; ',
+      'Language "generated": a = a ; a = b ; b = "" ; ',
+      'Language "generated": a = a ; a = b ; aa = "" ; ',
+      'Language "generated": a = a ; b = a ; a = "" ; ',
+      'Language "generated": a = a ; b = a ; b = "" ; ',
+      'Language "generated": a = a ; b = a ; aa = "" ; ',
+      'Language "generated": a = a ; b = b ; a = "" ; ',
+      'Language "generated": a = a ; b = b ; b = "" ; ',
+      'Language "generated": a = a ; b = b ; aa = "" ; ',
+      'Language "generated": a = a ; b = aa ; a = "" ; ',
+      'Language "generated": a = a ; b = aa ; b = "" ; ',
+      'Language "generated": a = a ; b = aa ; aa = "" ; ',
+      'Language "generated": a = a ; b = aa ; ba = "" ; ',
+      'Language "generated": a = b ; a = a ; a = "" ; ',
+      'Language "generated": a = b ; a = a ; b = "" ; ',
+      'Language "generated": a = b ; a = a ; aa = "" ; ',
+      'Language "generated": a = b ; a = b ; a = "" ; ',
+      'Language "generated": a = b ; a = b ; b = "" ; ',
+      'Language "generated": a = b ; a = b ; aa = "" ; ',
+      'Language "generated": a = b ; a = aa ; a = "" ; ',
+      'Language "generated": a = b ; a = aa ; b = "" ; ',
+      'Language "generated": a = b ; a = aa ; aa = "" ; ',
+      'Language "generated": a = b ; a = aa ; ba = "" ; ',
+      'Language "generated": a = b ; b = a ; a = "" ; ',
+      'Language "generated": a = b ; b = a ; b = "" ; ',
+      'Language "generated": a = b ; b = a ; aa = "" ; ',
+      'Language "generated": a = b ; b = b ; a = "" ; ',
+      'Language "generated": a = b ; b = b ; b = "" ; ',
+      'Language "generated": a = b ; b = b ; aa = "" ; ',
+      'Language "generated": a = b ; b = aa ; a = "" ; ',
+      'Language "generated": a = b ; b = aa ; b = "" ; ',
+      'Language "generated": a = b ; b = aa ; aa = "" ; ',
+      'Language "generated": a = b ; b = aa ; ba = "" ; ',
+      'Language "generated": a = b ; aa = a ; a = "" ; ',
+      'Language "generated": a = b ; aa = a ; b = "" ; ',
+      'Language "generated": a = b ; aa = a ; aa = "" ; ',
+      'Language "generated": a = b ; aa = a ; ba = "" ; ',
+      'Language "generated": a = b ; aa = b ; a = "" ; ',
+      'Language "generated": a = b ; aa = b ; b = "" ; ',
+      'Language "generated": a = b ; aa = b ; aa = "" ; ',
+      'Language "generated": a = b ; aa = b ; ba = "" ; ',
+      'Language "generated": a = b ; aa = aa ; a = "" ; ',
+      'Language "generated": a = b ; aa = aa ; b = "" ; ',
+      'Language "generated": a = b ; aa = aa ; aa = "" ; ',
+      'Language "generated": a = b ; aa = aa ; ba = "" ; ',
+      'Language "generated": a = b ; aa = ba ; a = "" ; ',
+      'Language "generated": a = b ; aa = ba ; b = "" ; ',
+      'Language "generated": a = b ; aa = ba ; aa = "" ; ',
+      'Language "generated": a = b ; aa = ba ; ba = "" ; ',
+      'Language "generated": a = b ; aa = ba ; c = "" ; ',
+      'Language "generated": a! = a ; a = a ; a = "" ; ',
+      'Language "generated": a! = a ; a = a ; b = "" ; ',
+      'Language "generated": a! = a ; a = b ; a = "" ; ',
+      'Language "generated": a! = a ; a = b ; b = "" ; ',
+      'Language "generated": a! = a ; a = b ; aa = "" ; ',
+      'Language "generated": a! = a ; b = a ; a = "" ; ',
+      'Language "generated": a! = a ; b = a ; b = "" ; ',
+      'Language "generated": a! = a ; b = a ; aa = "" ; ',
+      'Language "generated": a! = a ; b = b ; a = "" ; ',
+      'Language "generated": a! = a ; b = b ; b = "" ; ',
+      'Language "generated": a! = a ; b = b ; aa = "" ; ',
+      'Language "generated": a! = a ; b = aa ; a = "" ; ',
+      'Language "generated": a! = a ; b = aa ; b = "" ; ',
+      'Language "generated": a! = a ; b = aa ; aa = "" ; ',
+      'Language "generated": a! = a ; b = aa ; ba = "" ; ',
+      'Language "generated": a! = b ; a = a ; a = "" ; ',
+      'Language "generated": a! = b ; a = a ; b = "" ; ',
+      'Language "generated": a! = b ; a = a ; aa = "" ; ',
+      'Language "generated": a! = b ; a = b ; a = "" ; ',
+      'Language "generated": a! = b ; a = b ; b = "" ; ',
+      'Language "generated": a! = b ; a = b ; aa = "" ; ',
+      'Language "generated": a! = b ; a = aa ; a = "" ; ',
+      'Language "generated": a! = b ; a = aa ; b = "" ; ',
+      'Language "generated": a! = b ; a = aa ; aa = "" ; ',
+      'Language "generated": a! = b ; a = aa ; ba = "" ; ',
+      'Language "generated": a! = b ; b = a ; a = "" ; ',
+      'Language "generated": a! = b ; b = a ; b = "" ; ',
+      'Language "generated": a! = b ; b = a ; aa = "" ; ',
+      'Language "generated": a! = b ; b = b ; a = "" ; ',
+      'Language "generated": a! = b ; b = b ; b = "" ; ',
+      'Language "generated": a! = b ; b = b ; aa = "" ; ',
+      'Language "generated": a! = b ; b = aa ; a = "" ; ',
+      'Language "generated": a! = b ; b = aa ; b = "" ; ',
+      'Language "generated": a! = b ; b = aa ; aa = "" ; ',
+      'Language "generated": a! = b ; b = aa ; ba = "" ; ',
+      'Language "generated": a! = b ; aa = a ; a = "" ; ',
+      'Language "generated": a! = b ; aa = a ; b = "" ; ',
+      'Language "generated": a! = b ; aa = a ; aa = "" ; ',
+      'Language "generated": a! = b ; aa = a ; ba = "" ; ',
+      'Language "generated": a! = b ; aa = b ; a = "" ; ',
+      'Language "generated": a! = b ; aa = b ; b = "" ; ',
+      'Language "generated": a! = b ; aa = b ; aa = "" ; ',
+      'Language "generated": a! = b ; aa = b ; ba = "" ; ',
+      'Language "generated": a! = b ; aa = aa ; a = "" ; ',
+      'Language "generated": a! = b ; aa = aa ; b = "" ; ',
+      'Language "generated": a! = b ; aa = aa ; aa = "" ; ',
+      'Language "generated": a! = b ; aa = aa ; ba = "" ; ',
+      'Language "generated": a! = b ; aa = ba ; a = "" ; ',
+      'Language "generated": a! = b ; aa = ba ; b = "" ; ',
+      'Language "generated": a! = b ; aa = ba ; aa = "" ; ',
+      'Language "generated": a! = b ; aa = ba ; ba = "" ; ',
+      'Language "generated": a! = b ; aa = ba ; c = "" ; ',
+      'Language "generated": a = "" ?; a = a ; a = "" ; ',
+      'Language "generated": a = "" ?; a = a ; b = "" ; ',
+      'Language "generated": a = "" ?; a = b ; a = "" ; ',
+      'Language "generated": a = "" ?; a = b ; b = "" ; ',
+      'Language "generated": a = "" ?; a = b ; aa = "" ; ',
+      'Language "generated": a = "" ?; b = a ; a = "" ; ',
+      'Language "generated": a = "" ?; b = a ; b = "" ; ',
+      'Language "generated": a = "" ?; b = a ; aa = "" ; ',
+      'Language "generated": a = "" ?; b = b ; a = "" ; ',
+      'Language "generated": a = "" ?; b = b ; b = "" ; ',
+      'Language "generated": a = "" ?; b = b ; aa = "" ; ',
+      'Language "generated": a = "" ?; b = aa ; a = "" ; ',
+      'Language "generated": a = "" ?; b = aa ; b = "" ; ',
+      'Language "generated": a = "" ?; b = aa ; aa = "" ; ',
+      'Language "generated": a = "" ?; b = aa ; ba = "" ; ',
+      'Language "generated": a! = "" ?; a = a ; a = "" ; ',
+      'Language "generated": a! = "" ?; a = a ; b = "" ; ',
+      'Language "generated": a! = "" ?; a = b ; a = "" ; ',
+      'Language "generated": a! = "" ?; a = b ; b = "" ; ',
+      'Language "generated": a! = "" ?; a = b ; aa = "" ; ',
+      'Language "generated": a! = "" ?; b = a ; a = "" ; ',
+      'Language "generated": a! = "" ?; b = a ; b = "" ; ',
+      'Language "generated": a! = "" ?; b = a ; aa = "" ; ',
+      'Language "generated": a! = "" ?; b = b ; a = "" ; ',
+      'Language "generated": a! = "" ?; b = b ; b = "" ; ',
+      'Language "generated": a! = "" ?; b = b ; aa = "" ; ',
+      'Language "generated": a! = "" ?; b = aa ; a = "" ; ',
+      'Language "generated": a! = "" ?; b = aa ; b = "" ; ',
+      'Language "generated": a! = "" ?; b = aa ; aa = "" ; ',
+      'Language "generated": a! = "" ?; b = aa ; ba = "" ; ',
+      'Language "generated": a = a ?; a = a ; a = "" ; ',
+      'Language "generated": a = a ?; a = a ; b = "" ; ',
+      'Language "generated": a = a ?; a = b ; a = "" ; ',
+      'Language "generated": a = a ?; a = b ; b = "" ; ',
+      'Language "generated": a = a ?; a = b ; aa = "" ; ',
+      'Language "generated": a = a ?; b = a ; a = "" ; ',
+      'Language "generated": a = a ?; b = a ; b = "" ; ',
+      'Language "generated": a = a ?; b = a ; aa = "" ; ',
+      'Language "generated": a = a ?; b = b ; a = "" ; ',
+      'Language "generated": a = a ?; b = b ; b = "" ; ',
+      'Language "generated": a = a ?; b = b ; aa = "" ; ',
+      'Language "generated": a = a ?; b = aa ; a = "" ; ',
+      'Language "generated": a = a ?; b = aa ; b = "" ; ',
+      'Language "generated": a = a ?; b = aa ; aa = "" ; ',
+      'Language "generated": a = a ?; b = aa ; ba = "" ; ',
+      'Language "generated": a = b ?; a = a ; a = "" ; ',
+      'Language "generated": a = b ?; a = a ; b = "" ; ',
+      'Language "generated": a = b ?; a = a ; aa = "" ; ',
+      'Language "generated": a = b ?; a = b ; a = "" ; ',
+      'Language "generated": a = b ?; a = b ; b = "" ; ',
+      'Language "generated": a = b ?; a = b ; aa = "" ; ',
+      'Language "generated": a = b ?; a = aa ; a = "" ; ',
+      'Language "generated": a = b ?; a = aa ; b = "" ; ',
+      'Language "generated": a = b ?; a = aa ; aa = "" ; ',
+      'Language "generated": a = b ?; a = aa ; ba = "" ; ',
+      'Language "generated": a = b ?; b = a ; a = "" ; ',
+      'Language "generated": a = b ?; b = a ; b = "" ; ',
+      'Language "generated": a = b ?; b = a ; aa = "" ; ',
+      'Language "generated": a = b ?; b = b ; a = "" ; ',
+      'Language "generated": a = b ?; b = b ; b = "" ; ',
+      'Language "generated": a = b ?; b = b ; aa = "" ; ',
+      'Language "generated": a = b ?; b = aa ; a = "" ; ',
+      'Language "generated": a = b ?; b = aa ; b = "" ; ',
+      'Language "generated": a = b ?; b = aa ; aa = "" ; ',
+      'Language "generated": a = b ?; b = aa ; ba = "" ; ',
+      'Language "generated": a = b ?; aa = a ; a = "" ; ',
+      'Language "generated": a = b ?; aa = a ; b = "" ; ',
+      'Language "generated": a = b ?; aa = a ; aa = "" ; ',
+      'Language "generated": a = b ?; aa = a ; ba = "" ; ',
+      'Language "generated": a = b ?; aa = b ; a = "" ; ',
+      'Language "generated": a = b ?; aa = b ; b = "" ; ',
+      'Language "generated": a = b ?; aa = b ; aa = "" ; ',
+      'Language "generated": a = b ?; aa = b ; ba = "" ; ',
+      'Language "generated": a = b ?; aa = aa ; a = "" ; ',
+      'Language "generated": a = b ?; aa = aa ; b = "" ; ',
+      'Language "generated": a = b ?; aa = aa ; aa = "" ; ',
+      'Language "generated": a = b ?; aa = aa ; ba = "" ; ',
+      'Language "generated": a = b ?; aa = ba ; a = "" ; ',
+      'Language "generated": a = b ?; aa = ba ; b = "" ; ',
+      'Language "generated": a = b ?; aa = ba ; aa = "" ; ',
+      'Language "generated": a = b ?; aa = ba ; ba = "" ; ',
+      'Language "generated": a = b ?; aa = ba ; c = "" ; ',
+      'Language "generated": a! = a ?; ',
+      'Language "generated": a! = b ?; ',
+      'Language "generated": a! = a ?; a = "" ; ',
+      'Language "generated": a! = a ?; b = "" ; ',
+      'Language "generated": a! = b ?; a = "" ; ',
+      'Language "generated": a! = b ?; b = "" ; ',
+      'Language "generated": a! = b ?; aa = "" ; ',
+      'Language "generated": a! = a ?; a! = "" ; ',
+      'Language "generated": a! = a ?; b! = "" ; ',
+      'Language "generated": a! = b ?; a! = "" ; ',
+      'Language "generated": a! = b ?; b! = "" ; ',
+      'Language "generated": a! = b ?; aa! = "" ; ',
+      'Language "generated": a! = a ?; a = "" ; a = "" ; ',
+      'Language "generated": a! = a ?; a = "" ; b = "" ; ',
+      'Language "generated": a! = a ?; b = "" ; a = "" ; ',
+      'Language "generated": a! = a ?; b = "" ; b = "" ; ',
+      'Language "generated": a! = a ?; b = "" ; aa = "" ; ',
+      'Language "generated": a! = b ?; a = "" ; a = "" ; ',
+      'Language "generated": a! = b ?; a = "" ; b = "" ; ',
+      'Language "generated": a! = b ?; a = "" ; aa = "" ; ',
+      'Language "generated": a! = b ?; b = "" ; a = "" ; ',
+      'Language "generated": a! = b ?; b = "" ; b = "" ; ',
+      'Language "generated": a! = b ?; b = "" ; aa = "" ; ',
+      'Language "generated": a! = b ?; aa = "" ; a = "" ; ',
+      'Language "generated": a! = b ?; aa = "" ; b = "" ; ',
+      'Language "generated": a! = b ?; aa = "" ; aa = "" ; ',
+      'Language "generated": a! = b ?; aa = "" ; ba = "" ; ',
+      'Language "generated": a! = a ?; a! = "" ; a = "" ; ',
+      'Language "generated": a! = a ?; a! = "" ; b = "" ; ',
+      'Language "generated": a! = a ?; b! = "" ; a = "" ; ',
+      'Language "generated": a! = a ?; b! = "" ; b = "" ; ',
+      'Language "generated": a! = a ?; b! = "" ; aa = "" ; '
     ]);
-  });
-
-  test('various properties of the generated languages', function() {
-    let numToGenerate;
-    if (process.env['SLOW_TEST']) {
-      numToGenerate = 1_000_000;
-      this.timeout(4 * 60 * 1000);
-    } else {
-      numToGenerate = 10_000;
-    }
-    let successCount = 0;
-    for (const generatedLangDef of take(languageLanguage, numToGenerate)) {
-      const result = tryParse(generatedLangDef);
-      if (!result.successful) {
-        assert.instanceOf(
-            result.error, ValidationError,
-            `Expected all generated languages to parse, but this one did not: \n    ${
-                generatedLangDef}\n`);
-      } else {
-        successCount++;
-        const stringValue = result.value.toString();
-        const reparseResult = tryParse(stringValue);
-        // Test that we can stringify and parse again.
-        if (!reparseResult.successful) {
-          throw new Error(`
-            This language:
-              ${generatedLangDef}
-            When parsed and stringified, yielded:
-              ${stringValue}
-            Which failed to parse with error: ${reparseResult.error}`);
-        }
-        // Test that restringifying and reparsing is stable, it produces the
-        // same thing as the first stringification.
-        assert.deepEqual(
-            parse(reparseResult.value.toString()).toString(), stringValue);
-
-        // Check for infinite loops (should have been caught in validation).
-        [...take(result.value, 10)];
-      }
-    }
-    assert.isAtLeast(
-        successCount / numToGenerate, 0.03,
-        `Too many generated languages did not validate!`);
   });
 });

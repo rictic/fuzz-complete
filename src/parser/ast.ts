@@ -40,9 +40,8 @@ export class Language {
     for (const rule of this.rules) {
       this.validateRuleReferences(rule.production, ruleNames);
     }
-    const startRule = this.rules[0];
-    if (startRule !== undefined) {
-      this.validateRuleTerminates(startRule);
+    for (const rule of this.rules) {
+      this.validateRuleTerminates(rule);
     }
   }
 
