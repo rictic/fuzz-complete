@@ -16,16 +16,13 @@ Define a language in [Backus–Naur form](https://en.wikipedia.org/wiki/Backus%E
 Language "simple arithmetic":
   expression = number |
               '(' unaryOp expression ')' |
-              '(' expression binaryOp expression ')';
+              '(' expression ' ' binaryOp ' ' expression ')';
   unaryOp = '-';
   binaryOp = '+' | '-' | '*' | '/' | '**' | '<<' | '>>' | '|' | '&';
-  number = natural | floating;
-  natural = digit digits;
-  floating = natural '.' natural;
-  digits = | digit digits;
+  number = digit+ | digit+ '.' digit+;
   digit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
 ```
-[Demo on the playground](https://fuzz.rictic.com/?input=Language+%22simple+arithmetic%22%3A%0A++expression+%3D+number+%7C+%27%28%27+unaryOp+expression+%27%29%27+%7C+%27%28%27+expression+binaryOp+expression+%27%29%27%3B%0A++unaryOp+%3D+%27-%27%3B%0A++binaryOp+%3D+%27%2B%27+%7C+%27-%27+%7C+%27*%27+%7C+%27%2F%27+%7C+%27**%27+%7C+%27%3C%3C%27+%7C+%27%3E%3E%27+%7C+%27%7C%27+%7C+%27%26%27%3B%0A++number+%3D+natural+%7C+floating%3B%0A++natural+%3D+digit+digits%3B%0A++floating+%3D+natural+%27.%27+natural%3B%0A++digits+%3D+%7C+digit+digits%3B%0A++digit+%3D+%270%27+%7C+%271%27+%7C+%272%27+%7C+%273%27+%7C+%274%27+%7C+%275%27+%7C+%276%27+%7C+%277%27+%7C+%278%27+%7C+%279%27%3B+)
+[Demo on the playground](https://fuzz.rictic.com/?input=Language+%22simple+arithmetic%22%3A%0A++expression+%3D+number+%7C%0A++++++++++++++%27%28%27+unaryOp+expression+%27%29%27+%7C%0A++++++++++++++%27%28%27+expression+%27+%27+binaryOp+%27+%27+expression+%27%29%27%3B%0A++unaryOp+%3D+%27-%27%3B%0A++binaryOp+%3D+%27%2B%27+%7C+%27-%27+%7C+%27*%27+%7C+%27%2F%27+%7C+%27**%27+%7C+%27%3C%3C%27+%7C+%27%3E%3E%27+%7C+%27%7C%27+%7C+%27%26%27%3B%0A++number+%3D+digit%2B+%7C+digit%2B+%27.%27+digit%2B%3B%0A++digit+%3D+%270%27+%7C+%271%27+%7C+%272%27+%7C+%273%27+%7C+%274%27+%7C+%275%27+%7C+%276%27+%7C+%277%27+%7C+%278%27+%7C+%279%27%3B)
 
 fuzz-complete will produce every sentence in that language, in roughly increasing complexity. More formally, for every finite N there is a finite K such that every sentence in the language of length ≤N is in fuzz-complete's output at an index less than K.
 
@@ -35,7 +32,7 @@ fuzz-complete will produce every sentence in that language, in roughly increasin
 **hello-fuzz.js**
 ```javascript
 import {Parser} from 'fuzz-complete'
-const language = new Parser().parse(`Language "foo*": foo = | 'foo' foo;`);
+const language = new Parser().parse(`Language "foo*": foo = 'foo'*;`);
 for (const sentence of language) {
   console.log(sentence);
 }
