@@ -71,9 +71,15 @@ suite('it can fuzz itself', () => {
     ]);
   });
 
-  test('the output parses, even if it does not validate', () => {
+  test('the output parses, even if it does not validate', function() {
     const parser = new Parser();
-    const numToGenerate = 10_000;
+    let numToGenerate;
+    if (process.env['SLOW_TEST']) {
+      numToGenerate = 1_000_000;
+      this.timeout(4 * 60 * 1000);
+    } else {
+      numToGenerate = 10_000;
+    }
     let successCount = 0;
     for (const generatedLangDef of take(languageLanguage, numToGenerate)) {
       const result = parser.tryParse(generatedLangDef);
@@ -100,7 +106,7 @@ suite('it can fuzz itself', () => {
       }
     }
     assert.isAtLeast(
-        successCount / numToGenerate, 0.10,
+        successCount / numToGenerate, 0.05,
         `Too many generated languages did not parse!`);
   });
 });
