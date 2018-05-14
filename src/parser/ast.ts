@@ -42,7 +42,7 @@ export class Language {
     }
     const startRule = this.rules[0];
     if (startRule !== undefined) {
-      // this.validateRuleTerminates(startRule);
+      this.validateRuleTerminates(startRule);
     }
   }
 
@@ -80,7 +80,7 @@ export class Language {
   private validateRuleTerminates(rule: Rule, visited = new Set<Rule>()) {
     if (visited.has(rule)) {
       throw new ValidationError(
-          `Infinite loop detected in leftmost choice.`, rule.nameStart,
+          `Infinite loop detected in leftmost choice`, rule.nameStart,
           rule.nameEnd);
     }
     visited.add(rule);
@@ -99,7 +99,8 @@ export class Language {
           case '?':
             return;  // These evaluate first to empty string, so it's k.
           case '+':
-            return this.validateProductionTerminates(production, visited);
+            return this.validateProductionTerminates(
+                production.production, visited);
           default:
             const never: never = production.operator;
             throw new Error(`Unknown unary operator: ${never}`);

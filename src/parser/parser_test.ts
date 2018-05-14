@@ -24,12 +24,16 @@ suite('Parser', () => {
   test('it can parse the language: a*', () => {
     const language = parse(`
         Language "Hello World":
-          start = "a" start | ℇ;
+          start = ℇ | "a" start;
         `.trim());
     assert.deepEqual(
         language.toString(),
         `Language "Hello World":\n` +
-            `  start = "a" start | ℇ;`);
+            `  start = ℇ | "a" start;`);
+    assert.deepEqual([...take(language, 10)], [
+      '', 'a', 'aa', 'aaa', 'aaaa', 'aaaaa', 'aaaaaa', 'aaaaaaa', 'aaaaaaaa',
+      'aaaaaaaaa'
+    ]);
   });
 
   test('it can parse the language: a(b|c)*', () => {
@@ -157,6 +161,24 @@ Language "uses parens":
               `Did not expect ${JSON.stringify(langSource)} to validate.`);
         }
         assert.deepEqual(result.error.originalMessage, 'Rule not declared');
+      }
+    });
+
+    test('languages that loop endlessly', () => {
+      const langSources = [
+        `Language "loop": start = start;`,
+        `Language "loop": start = "a" start;`,
+        `Language "loop": foo = "a" bar; bar = "b" baz; baz = "c" foo;`,
+      ];
+      for (const langSource of langSources) {
+        const result = tryParse(langSource);
+        if (result.successful) {
+          throw new Error(
+              `Did not expect ${JSON.stringify(langSource)} to validate.`);
+        }
+        assert.deepEqual(
+            result.error.originalMessage,
+            'Infinite loop detected in leftmost choice');
       }
     });
   });
