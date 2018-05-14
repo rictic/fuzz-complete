@@ -18,10 +18,10 @@ Language "json":
         '0'
     )
     (
-        '.' digit*
+        '.' digit+
     )?
     (
-        ('e' | 'E') ('+' | '-') digit*
+        ('e' | 'E') ('+' | '-') digit+
     )?
     ;
 
