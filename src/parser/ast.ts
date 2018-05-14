@@ -13,7 +13,8 @@ export type Production = {
 }|{
   kind: 'sequence',
   productions: Production[],
-}|{kind: 'unaryOperator', operator: '*' | '?' | '+', production: Production};
+}|{kind: 'unaryOperator', operator: '*' | '?' | '+', production: Production}|
+    {kind: 'choice', choices: Production[]};
 
 
 export class Language {
@@ -31,9 +32,7 @@ export class Language {
       ruleNames.add(rule.name);
     }
     for (const rule of this.rules) {
-      for (const production of rule.choices) {
-        this.validateProduction(production, ruleNames);
-      }
+      this.validateProduction(rule.production, ruleNames);
     }
     // TODO: validate that a label rule does not depend on a label rule
   }
@@ -58,6 +57,11 @@ export class Language {
       case 'unaryOperator':
         this.validateProduction(production.production, ruleNames);
         return;
+      case 'choice':
+        for (const choice of production.choices) {
+          this.validateProduction(choice, ruleNames);
+        }
+        return;
       default:
         const never: never = production;
         throw new Error(`Unknown kind of production: ${JSON.stringify(never)}`);
@@ -76,13 +80,13 @@ export class Language {
 
 export class Rule {
   constructor(
-      readonly name: string, readonly choices: ReadonlyArray<Production>,
+      readonly name: string, readonly production: Production,
       readonly labeled: boolean, readonly nameStart: number,
       readonly nameEnd: number) {}
 
   toString() {
     return `${this.name}${this.labeled ? '!' : ''} = ${
-        this.choices.map((p) => stringifyProduction(p)).join(' | ')};`;
+        stringifyProduction(this.production)};`;
   }
 }
 
@@ -105,6 +109,8 @@ function stringifyProduction(production: Production): string {
       }
       return `${stringifyProduction(production.production)}${
           production.operator}`;
+    case 'choice':
+      return production.choices.map(stringifyProduction).join(' | ');
     default:
       const never: never = production;
       throw new Error(`Unknown production kind: ${JSON.stringify(never)}`);

@@ -184,14 +184,14 @@ export class Generator {
   private convertRule(rule: Rule) {
     let converted = this.ruleMap.get(rule.name);
     if (!converted) {
-      const choice = new Choice();
+      const sequence = new Sequence();
       if (rule.labeled) {
-        converted = new LabeledProduction(rule.name, choice);
+        converted = new LabeledProduction(rule.name, sequence);
       } else {
-        converted = choice;
+        converted = sequence;
       }
       this.ruleMap.set(rule.name, converted);
-      choice.initialize(rule.choices.map((c) => this.convertProduction(c)));
+      sequence.initialize([this.convertProduction(rule.production)]);
     }
     return converted;
   }
@@ -227,6 +227,9 @@ export class Generator {
             const never: never = production.operator;
             throw new Error(`Found unknown unary operator: ${never}`);
         }
+      case 'choice':
+        return new Choice(
+            production.choices.map((c) => this.convertProduction(c)));
       default:
         const never: never = production;
         throw new Error(`Unknown production kind: ${JSON.stringify(never)}`);

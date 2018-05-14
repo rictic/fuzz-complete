@@ -111,8 +111,8 @@ class ParserContext {
         }
       }
       rules.push(new Rule(
-          this.tokenizer.slice(nameToken), choices, isLabelRule,
-          nameToken.start, nameToken.end));
+          this.tokenizer.slice(nameToken), {kind: 'choice', choices},
+          isLabelRule, nameToken.start, nameToken.end));
       this.skipWhitespace();
     }
     return rules;

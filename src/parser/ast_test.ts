@@ -6,7 +6,7 @@ import {Language, Production, Rule} from './ast.js';
 
 function NewRule(name: string, choices: Production[]) {
   // We don't care about locations in these tests.
-  return new Rule(name, choices, false, 0, 0);
+  return new Rule(name, Choice(...choices), false, 0, 0);
 }
 function Literal(value: string): Production {
   return {kind: 'literal', value};
@@ -17,9 +17,13 @@ function Ref(name: string): Production {
 function Sequence(...productions: Production[]): Production {
   return {kind: 'sequence', productions};
 }
+function Choice(...choices: Production[]): Production {
+  return {kind: 'choice', choices};
+}
 function Op(operator: '+'|'?'|'*', production: Production): Production {
   return {kind: 'unaryOperator', operator, production};
 }
+
 const Empty = Sequence();
 
 
@@ -149,7 +153,8 @@ suite('language with one labeled rule', () => {
   const labelled = new Language('one label', [
     NewRule('start', [Empty, Sequence(Ref('identifier'), Ref('start'))]),
     new Rule(
-        'identifier', [Literal('a'), Literal('b'), Literal('c')], true, 0, 0)
+        'identifier', Choice(Literal('a'), Literal('b'), Literal('c')), true, 0,
+        0)
   ]);
 
   test('generates the first few members', () => {
