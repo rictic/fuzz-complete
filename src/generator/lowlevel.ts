@@ -146,9 +146,10 @@ export class Generator {
     const labellingsByRuleName = new Map<string, string[][]>();
     for (const [ruleName, count] of labelsToCounts) {
       const choices = take(this.ruleMap.get(ruleName)!.generate(true), count);
+
       labellingsByRuleName.set(
           ruleName,
-          [...everyLabelling([...choices].map((c) => c.join()), count)]);
+          [...everyLabelling([...choices].map((c) => c.join('')), count)]);
     }
     if (labellingsByRuleName.size !== 1) {
       throw new Error('We don\'t handle multiple different labels yet.');

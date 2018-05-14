@@ -1,5 +1,5 @@
 import {Language, Production, Rule} from './ast.js';
-import {LocatedError} from './error.js';
+import {LocatedError, ParseError} from './error.js';
 import {Token, TokenType} from './token.js';
 import {Tokenizer} from './tokenizer.js';
 
@@ -53,7 +53,7 @@ class ParserContext {
         this.skipWhitespace();
         const nextToken = this.tokenizer.currentToken;
         if (!nextToken) {
-          throw LocatedError.atCurrentLocation(
+          throw ParseError.atCurrentLocation(
               'Unexpected end of input, missing semicolon?', this.tokenizer);
         }
         function getProduction(choice: Production[]): Production {
@@ -69,7 +69,7 @@ class ParserContext {
             this.tokenizer.advance();
             const latestProduction = currentChoice.pop();
             if (latestProduction === undefined) {
-              throw LocatedError.atToken(
+              throw ParseError.atToken(
                   `Unary operator must come after a production`, nextToken);
             }
             currentChoice.push({
@@ -106,7 +106,7 @@ class ParserContext {
 
             break parseChoicesLoop;
           default:
-            throw LocatedError.atToken(
+            throw ParseError.atToken(
                 `Unexpected token inside of rule definition`, nextToken);
         }
       }
@@ -121,7 +121,7 @@ class ParserContext {
   consumeWordWithValue(expectedValue?: string) {
     const token = this.consume(Token.type.word, `word \`${expectedValue}\``);
     if (this.tokenizer.slice(token) !== expectedValue) {
-      throw LocatedError.atToken(`Expected word \`${expectedValue}\``, token);
+      throw ParseError.atToken(`Expected word \`${expectedValue}\``, token);
     }
     this.tokenizer.advance();
     return token;
@@ -135,11 +135,11 @@ class ParserContext {
   consume(tokenType: TokenType, kind: string) {
     const token = this.tokenizer.currentToken;
     if (!token) {
-      throw LocatedError.atCurrentLocation(
+      throw ParseError.atCurrentLocation(
           `Unexpected end of input, expected ${kind}`, this.tokenizer);
     }
     if (!token.is(tokenType)) {
-      throw LocatedError.atToken(`Expected ${kind}`, token);
+      throw ParseError.atToken(`Expected ${kind}`, token);
     }
     this.tokenizer.advance();
     return token;

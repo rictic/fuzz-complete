@@ -1,6 +1,6 @@
 import {Generator} from '../generator/lowlevel.js';
 
-import {LocatedError} from './error.js';
+import {ValidationError} from './error.js';
 
 export type Production = {
   kind: 'literal',
@@ -25,7 +25,8 @@ export class Language {
     const ruleNames = new Set<string>();
     for (const rule of this.rules) {
       if (ruleNames.has(rule.name)) {
-        throw new LocatedError(`Duplicate rule`, rule.nameStart, rule.nameEnd);
+        throw new ValidationError(
+            `Duplicate rule`, rule.nameStart, rule.nameEnd);
       }
       ruleNames.add(rule.name);
     }
@@ -49,7 +50,7 @@ export class Language {
         return;
       case 'rule':
         if (!ruleNames.has(production.name)) {
-          throw new LocatedError(
+          throw new ValidationError(
               `Rule not declared`, production.offsetStart,
               production.offsetEnd);
         }

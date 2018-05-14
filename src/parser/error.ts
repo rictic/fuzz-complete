@@ -14,3 +14,7 @@ export class LocatedError extends Error {
     return new LocatedError(message, token.start, token.end);
   }
 }
+
+export class ParseError extends LocatedError {}
+
+export class ValidationError extends LocatedError {}
