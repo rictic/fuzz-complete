@@ -1,8 +1,8 @@
 import {assert} from 'chai';
 
-import {Parser} from '.';
-import {ValidationError} from './parser/error';
-import {take} from './util';
+import {parse, tryParse} from './index.js';
+import {ValidationError} from './parser/error.js';
+import {take} from './util.js';
 
 suite('it can fuzz itself', () => {
   const languageText = `
@@ -15,7 +15,7 @@ suite('it can fuzz itself', () => {
       stringContents = letter*;
       letter = 'a' | 'b' | 'c';
   `;
-  const languageLanguage = new Parser().parse(languageText);
+  const languageLanguage = parse(languageText);
   test('the first 50 results seem reasonable', () => {
     assert.deepEqual([...take(languageLanguage, 50)], [
       'Language "generated": ',
@@ -72,7 +72,6 @@ suite('it can fuzz itself', () => {
   });
 
   test('the output parses, even if it does not validate', function() {
-    const parser = new Parser();
     let numToGenerate;
     if (process.env['SLOW_TEST']) {
       numToGenerate = 1_000_000;
@@ -82,7 +81,7 @@ suite('it can fuzz itself', () => {
     }
     let successCount = 0;
     for (const generatedLangDef of take(languageLanguage, numToGenerate)) {
-      const result = parser.tryParse(generatedLangDef);
+      const result = tryParse(generatedLangDef);
       if (!result.successful) {
         assert.instanceOf(
             result.error, ValidationError,
@@ -91,7 +90,7 @@ suite('it can fuzz itself', () => {
       } else {
         successCount++;
         const stringValue = result.value.toString();
-        const reparseResult = parser.tryParse(stringValue);
+        const reparseResult = tryParse(stringValue);
         if (!reparseResult.successful) {
           throw new Error(`
             This language:
@@ -101,8 +100,7 @@ suite('it can fuzz itself', () => {
             Which failed to parse with error: ${reparseResult.error}`);
         }
         assert.deepEqual(
-            parser.parse(reparseResult.value.toString()).toString(),
-            stringValue);
+            parse(reparseResult.value.toString()).toString(), stringValue);
       }
     }
     assert.isAtLeast(

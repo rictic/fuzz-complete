@@ -2,18 +2,16 @@ import {assert} from 'chai';
 
 import {take} from '../util.js';
 
-import {Parser} from './parser.js';
+import {parse, tryParse} from './parser.js';
 
 suite('Parser', () => {
   test('it can parse a minimal file', () => {
-    const parser = new Parser();
-    const language = parser.parse(`Language "Hello World":`);
+    const language = parse(`Language "Hello World":`);
     assert.deepEqual(language.toString(), `Language "Hello World":\n`);
   });
 
   test('it can parse the language: a', () => {
-    const parser = new Parser();
-    const language = parser.parse(`
+    const language = parse(`
         Language "Hello World":
           start = "a";
         `.trim());
@@ -24,8 +22,7 @@ suite('Parser', () => {
   });
 
   test('it can parse the language: a*', () => {
-    const parser = new Parser();
-    const language = parser.parse(`
+    const language = parse(`
         Language "Hello World":
           start = "a" start | ℇ;
         `.trim());
@@ -36,8 +33,7 @@ suite('Parser', () => {
   });
 
   test('it can parse the language: a(b|c)*', () => {
-    const parser = new Parser();
-    const language = parser.parse(`
+    const language = parse(`
         Language "a(b|c)*":
           start = "a" bOrCStar;
           bOrC = "b" | "c";
@@ -52,8 +48,7 @@ suite('Parser', () => {
   });
 
   test('it can parse labelled rules', () => {
-    const parser = new Parser();
-    const language = parser.parse(`
+    const language = parse(`
         Language "addition of labels":
           start = 'var ' identifier ' = ' identifier ' + ' identifier;
           identifier! = "a" | "b" | "c" | "d" | "e";
@@ -71,8 +66,7 @@ suite('Parser', () => {
   });
 
   test('it can handle multiple labels', () => {
-    const parser = new Parser();
-    const language = parser.parse(`
+    const language = parse(`
         Language "multiple labels":
           start = statement+;
           statement = 'var ' identifier ' = ' identifier ' * ' number ' + ' number ';  ';
@@ -114,8 +108,7 @@ suite('Parser', () => {
   });
 
   test('it can parse EBNF unary operators', () => {
-    const parser = new Parser();
-    const language = parser.parse(`
+    const language = parse(`
         Language "ebnf unary operators":
           start = "foo"* | start+ | "baz"? start? start* start+;
         `);
@@ -128,8 +121,7 @@ Language "ebnf unary operators":
   });
 
   test('it can parse parentheses', () => {
-    const parser = new Parser();
-    const language = parser.parse(`
+    const language = parse(`
         Language "uses parens":
           start = (foobar (' ' foobar)*)? (" baz " "bonk")?;
           foobar = 'foo' | 'bar';
@@ -150,5 +142,22 @@ Language "uses parens":
       'bar foo',
       'bar foo baz bonk',
     ]);
+  });
+
+  suite('validation', () => {
+    test('languages with references to undeclared rules', () => {
+      const langSources = [
+        `Language "foo": start = honk;`,
+        `Language "foo": start = 'lol' 'what'; foo = honk;`,
+      ];
+      for (const langSource of langSources) {
+        const result = tryParse(langSource);
+        if (result.successful) {
+          throw new Error(
+              `Did not expect ${JSON.stringify(langSource)} to validate.`);
+        }
+        assert.deepEqual(result.error.originalMessage, 'Rule not declared');
+      }
+    });
   });
 });

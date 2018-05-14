@@ -18,7 +18,13 @@ export type Production = {
 
 
 export class Language {
+  readonly rulesByName: ReadonlyMap<string, Rule>;
   constructor(readonly name: string, readonly rules: ReadonlyArray<Rule>) {
+    const rulesByName = new Map<string, Rule>();
+    for (const rule of rules) {
+      rulesByName.set(rule.name, rule);
+    }
+    this.rulesByName = rulesByName;
     this.validate();
   }
 
@@ -32,19 +38,22 @@ export class Language {
       ruleNames.add(rule.name);
     }
     for (const rule of this.rules) {
-      this.validateProduction(rule.production, ruleNames);
+      this.validateRuleReferences(rule.production, ruleNames);
     }
-    // TODO: validate that a label rule does not depend on a label rule
+    const startRule = this.rules[0];
+    if (startRule !== undefined) {
+      // this.validateRuleTerminates(startRule);
+    }
   }
 
-  private validateProduction(
+  private validateRuleReferences(
       production: Production, ruleNames: ReadonlySet<string>) {
     switch (production.kind) {
       case 'literal':
         return;
       case 'sequence':
         for (const innerProduction of production.productions) {
-          this.validateProduction(innerProduction, ruleNames);
+          this.validateRuleReferences(innerProduction, ruleNames);
         }
         return;
       case 'rule':
@@ -55,11 +64,58 @@ export class Language {
         }
         return;
       case 'unaryOperator':
-        this.validateProduction(production.production, ruleNames);
+        this.validateRuleReferences(production.production, ruleNames);
         return;
       case 'choice':
         for (const choice of production.choices) {
-          this.validateProduction(choice, ruleNames);
+          this.validateRuleReferences(choice, ruleNames);
+        }
+        return;
+      default:
+        const never: never = production;
+        throw new Error(`Unknown kind of production: ${JSON.stringify(never)}`);
+    }
+  }
+
+  private validateRuleTerminates(rule: Rule, visited = new Set<Rule>()) {
+    if (visited.has(rule)) {
+      throw new ValidationError(
+          `Infinite loop detected in leftmost choice.`, rule.nameStart,
+          rule.nameEnd);
+    }
+    visited.add(rule);
+    this.validateProductionTerminates(rule.production, visited);
+    visited.delete(rule);
+  }
+
+  private validateProductionTerminates(
+      production: Production, visited: Set<Rule>): void {
+    switch (production.kind) {
+      case 'literal':
+        return;  // no loop here!
+      case 'unaryOperator':
+        switch (production.operator) {
+          case '*':
+          case '?':
+            return;  // These evaluate first to empty string, so it's k.
+          case '+':
+            return this.validateProductionTerminates(production, visited);
+          default:
+            const never: never = production.operator;
+            throw new Error(`Unknown unary operator: ${never}`);
+        }
+      case 'rule':
+        return this.validateRuleTerminates(
+            this.rulesByName.get(production.name)!, visited);
+      case 'choice':
+        if (production.choices.length === 0) {
+          return;
+        }
+        return this.validateProductionTerminates(
+            production.choices[0], visited);
+      case 'sequence':
+        for (const child of production.productions) {
+          this.validateProductionTerminates(child, visited);
         }
         return;
       default:

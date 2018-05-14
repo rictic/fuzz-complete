@@ -31,8 +31,8 @@ fuzz-complete will produce every sentence in that language, in roughly increasin
 
 **hello-fuzz.js**
 ```javascript
-import {Parser} from 'fuzz-complete'
-const language = new Parser().parse(`Language "foo*": foo = 'foo'*;`);
+import {parse} from 'fuzz-complete'
+const language = parse(`Language "foo*": foo = 'foo'*;`);
 for (const sentence of language) {
   console.log(sentence);
 }

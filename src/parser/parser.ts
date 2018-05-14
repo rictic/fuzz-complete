@@ -175,21 +175,14 @@ class ParserContext {
   }
 }
 
-/**
- * Class that implements a grammar parser.
- */
-class Parser {
-  parse(text: string): Language {
-    const context = new ParserContext(text);
-    if (context.result.successful) {
-      return context.result.value;
-    }
-    throw context.result.error;
+export function parse(text: string): Language {
+  const context = new ParserContext(text);
+  if (context.result.successful) {
+    return context.result.value;
   }
-
-  tryParse(text: string) {
-    return (new ParserContext(text)).result;
-  }
+  throw context.result.error;
 }
 
-export {Parser};
+export function tryParse(text: string) {
+  return (new ParserContext(text)).result;
+}
