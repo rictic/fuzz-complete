@@ -70,6 +70,49 @@ suite('Parser', () => {
     ]);
   });
 
+  test('it can handle multiple labels', () => {
+    const parser = new Parser();
+    const language = parser.parse(`
+        Language "multiple labels":
+          start = statement+;
+          statement = 'var ' identifier ' = ' identifier ' * ' number ' + ' number ';  ';
+          identifier! = 'foo' | 'bar' | 'baz';
+          number! = '0' | '1' | '2' | '3' | '4' | '5';
+    `.trim());
+    assert.deepEqual([...take(language, 30)], [
+      'var foo = foo * 0 + 0;  ',
+      'var foo = bar * 0 + 0;  ',
+      'var foo = foo * 0 + 1;  ',
+      'var foo = bar * 0 + 1;  ',
+      'var foo = foo * 0 + 0;  var foo = foo * 0 + 0;  ',
+      'var foo = foo * 0 + 0;  var foo = bar * 0 + 0;  ',
+      'var foo = foo * 0 + 0;  var foo = foo * 0 + 1;  ',
+      'var foo = foo * 0 + 0;  var foo = bar * 0 + 1;  ',
+      'var foo = foo * 0 + 0;  var bar = foo * 0 + 0;  ',
+      'var foo = foo * 0 + 0;  var bar = foo * 0 + 1;  ',
+      'var foo = foo * 0 + 0;  var foo = foo * 1 + 0;  ',
+      'var foo = foo * 0 + 0;  var foo = bar * 1 + 0;  ',
+      'var foo = foo * 0 + 0;  var bar = foo * 1 + 0;  ',
+      'var foo = foo * 0 + 0;  var bar = bar * 0 + 0;  ',
+      'var foo = foo * 0 + 0;  var bar = bar * 0 + 1;  ',
+      'var foo = foo * 0 + 0;  var bar = bar * 1 + 0;  ',
+      'var foo = foo * 0 + 0;  var foo = foo * 1 + 1;  ',
+      'var foo = foo * 0 + 0;  var foo = bar * 1 + 1;  ',
+      'var foo = foo * 0 + 0;  var bar = foo * 1 + 1;  ',
+      'var foo = foo * 0 + 0;  var bar = bar * 1 + 1;  ',
+      'var foo = foo * 0 + 0;  var bar = baz * 0 + 0;  ',
+      'var foo = foo * 0 + 0;  var bar = baz * 0 + 1;  ',
+      'var foo = foo * 0 + 0;  var bar = baz * 1 + 0;  ',
+      'var foo = foo * 0 + 0;  var bar = baz * 1 + 1;  ',
+      'var foo = foo * 0 + 0;  var foo = foo * 1 + 2;  ',
+      'var foo = foo * 0 + 0;  var foo = bar * 1 + 2;  ',
+      'var foo = foo * 0 + 0;  var bar = foo * 1 + 2;  ',
+      'var foo = foo * 0 + 0;  var bar = bar * 1 + 2;  ',
+      'var foo = foo * 0 + 0;  var bar = baz * 1 + 2;  ',
+      'var foo = bar * 0 + 0;  var foo = foo * 0 + 0;  '
+    ]);
+  });
+
   test('it can parse EBNF unary operators', () => {
     const parser = new Parser();
     const language = parser.parse(`

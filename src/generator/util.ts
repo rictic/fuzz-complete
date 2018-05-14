@@ -42,6 +42,26 @@ export function*
   }
 }
 
+export function*
+    everyCombinationMany<T>(iterators: Array<Iterable<T>>):
+        IterableIterator<T[]> {
+  if (iterators.length === 0) {
+    yield [];
+    return;
+  }
+  if (iterators.length === 1) {
+    for (const it of iterators[0]) {
+      yield [it];
+    }
+    return;
+  }
+  for (const [prefix, suffix] of everyCombination(
+           iterators[0][Symbol.iterator](),
+           everyCombinationMany(iterators.slice(1))[Symbol.iterator]())) {
+    yield [prefix].concat(suffix);
+  }
+}
+
 export class BufferedIterable<T> {
   private readonly buffer: T[] = [];
   constructor(private readonly iterator: Iterator<T>) {}

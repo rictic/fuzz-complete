@@ -2,7 +2,7 @@ import {assert} from 'chai';
 
 import {take} from '../util.js';
 
-import {BufferedIterable, everyCombination, everyLabelling} from './util.js';
+import {BufferedIterable, everyCombination, everyCombinationMany, everyLabelling} from './util.js';
 
 suite('everyCombination', () => {
   function* naturals() {
@@ -53,6 +53,48 @@ suite('everyCombination', () => {
           [5, 'c']
         ]);
       });
+});
+
+suite('everyCombinationMany', () => {
+  function* abc() {
+    yield 'a';
+    yield 'b';
+    yield 'c';
+  }
+
+  test('handles combining zero iterables', () => {
+    assert.deepEqual([...everyCombinationMany([])], [[]]);
+  });
+
+  test('handles combining one finite iterable', () => {
+    assert.deepEqual([...everyCombinationMany([abc()])], [['a'], ['b'], ['c']]);
+  });
+
+  test('handles combining two finite iterables', () => {
+    assert.deepEqual([...everyCombinationMany([abc(), abc()])], [
+      ['a', 'a'],
+      ['b', 'a'],
+      ['a', 'b'],
+      ['b', 'b'],
+      ['c', 'a'],
+      ['c', 'b'],
+      ['a', 'c'],
+      ['b', 'c'],
+      ['c', 'c'],
+    ]);
+  });
+
+  test('handles combining three finite iterables', () => {
+    assert.deepEqual([...everyCombinationMany([abc(), abc(), abc()])], [
+      ['a', 'a', 'a'], ['b', 'a', 'a'], ['a', 'b', 'a'], ['b', 'b', 'a'],
+      ['c', 'a', 'a'], ['c', 'b', 'a'], ['a', 'a', 'b'], ['b', 'a', 'b'],
+      ['c', 'a', 'b'], ['a', 'b', 'b'], ['b', 'b', 'b'], ['c', 'b', 'b'],
+      ['a', 'c', 'a'], ['b', 'c', 'a'], ['c', 'c', 'a'], ['a', 'c', 'b'],
+      ['b', 'c', 'b'], ['c', 'c', 'b'], ['a', 'a', 'c'], ['b', 'a', 'c'],
+      ['c', 'a', 'c'], ['a', 'b', 'c'], ['b', 'b', 'c'], ['c', 'b', 'c'],
+      ['a', 'c', 'c'], ['b', 'c', 'c'], ['c', 'c', 'c']
+    ]);
+  });
 });
 
 suite('everyLabelling', () => {

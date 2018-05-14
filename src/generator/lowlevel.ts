@@ -1,6 +1,7 @@
 import {Language, Production, Rule} from '../parser/ast.js';
 import {take} from '../util.js';
-import {everyCombination, everyLabelling} from './util.js';
+
+import {everyCombination, everyCombinationMany, everyLabelling} from './util.js';
 
 type IntermediateIterationResult = string|{label: string};
 interface LowLevelProduction {
@@ -151,20 +152,30 @@ export class Generator {
           ruleName,
           [...everyLabelling([...choices].map((c) => c.join('')), count)]);
     }
-    if (labellingsByRuleName.size !== 1) {
-      throw new Error('We don\'t handle multiple different labels yet.');
-    }
-    const [[rule, labellings]] = labellingsByRuleName;
-    for (const labelling of labellings) {
+    const foo = [...labellingsByRuleName].map(
+        ([rule, labellings]) =>
+            labellings.map((l): [string, string[]] => [rule, l]));
+    const labellings = [...everyCombinationMany(foo)];
+    for (const labelingPairs of labellings) {
+      const labelingMap = new Map(labelingPairs);
+      const labelIndexes =
+          new Map([...labelingMap.keys()].map((k): [string, number] => [k, 0]));
       yield results
           .map((v) => {
             if (typeof v === 'string') {
               return v;
             }
-            if (v.label !== rule) {
-              throw new Error('Impossible!!');
+            const labeling = labelingMap.get(v.label);
+            if (!labeling) {
+              throw new Error('Internal error, unknown label.');
             }
-            return labelling.shift()!;
+            const index = labelIndexes.get(v.label)!;
+            labelIndexes.set(v.label, index + 1);
+            const label = labeling[index]!;
+            if (label === undefined) {
+              throw new Error(`Internal error, ran out of ${v.label} labels.`);
+            }
+            return label;
           })
           .join('');
     }
