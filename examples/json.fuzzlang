@@ -1,0 +1,36 @@
+/** See https://www.json.org/ */
+Language "json":
+  value = string | number | object | array | "true" | "false" | "null";
+  object = '{' (keyValue (',' keyValue)*)? '}';
+  array = '[' (value (',' value)*)? ']';
+  keyValue = string ':' value;
+  string =
+    '"'
+    (
+        anyUnicodeExceptEscapes |
+        stringEscape
+    )
+    '"';
+  number =
+    '-'?
+    (
+        oneThroughNine digit* |
+        '0'
+    )
+    (
+        '.' digit*
+    )?
+    (
+        ('e' | 'E') ('+' | '-') digit*
+    )?
+    ;
+
+  /* maybe fuzz should have a shorthand for specifying ranges of characters? */
+  anyUnicodeExceptEscapes = 'a' | 'b' | 'c';
+  stringEscape = '\\' (
+            '"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't' |
+            'u' hexDigit hexDigit hexDigit hexDigit
+    );
+  hexDigit = digit | 'a' | 'b' | 'c' | 'd' | 'e' | 'f';
+  digit = oneThroughNine | '0';
+  oneThroughNine = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';

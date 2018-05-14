@@ -1,0 +1,15 @@
+Language "fuzz complete grammar":
+  start = 'Language "generated": ' rule*;
+  string = '"' stringContents '"';
+  rule = word '!'? ' = ' production '; ';
+  production =
+      (string ' ' | /* literal */
+        word ' ' | /* rule reference */
+        production ' | ' production | /* choice */
+        '(' production ')' | /* parethesized expression */
+        production+ /* sequence */
+      ) suffix* /* unary operator */;
+  suffix = '?' | '*' | '+';
+  word! = letter+;
+  stringContents = letter*;
+  letter = 'a' | 'b' | 'c';
