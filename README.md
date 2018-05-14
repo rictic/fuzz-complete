@@ -54,7 +54,7 @@ fuzz-complete interleaves exploration by depth and breadth to produce a complete
 
 ### Backus–Naur form
 
-There's no standard to Backus–Naur. In fuzz-complete's dialect, the first rule is the starting point. Whitespace is not significant, rules are terminated by semicolon. Parentheses, `*`, `+`, `?`, etc are not yet supported, but they can be emulated by adding additional rules.
+There's no standard to Backus–Naur. In fuzz-complete's dialect, the first rule is the starting point. Whitespace is not significant, rules are terminated by semicolon.
 
 #### Labeled rules
 
@@ -73,3 +73,12 @@ If a rule is declared with an exclamation point after its name like so:
 
 Then when expanding that rule, fuzz-complete will consider that rule to be a label, and it will not generate sentences with that are structurally the same but with different labels.
 
+### Operators
+
+For any expression, you can use the following operators:
+
+  * `+` – expands the expression one or more times
+  * `*` – expands the expression zero or more times
+  * `?` – expands to the expression or to the empty string
+
+These operators are often useful with parentheses. For example, `("foo" | "bar")+` will produce `foo, bar, foobar, barfoo, foofoobar...`, and `"[" (number (", " number)*)? "]"` will produce `[], [0], [1], [0, 1], [1, 0], [2]...`.

@@ -90,27 +90,40 @@ export class Rule {
   }
 }
 
-function stringifyProduction(production: Production): string {
+function stringifyProduction(
+    production: Production, parenthesize = false): string {
   switch (production.kind) {
     case 'literal':
       return `"${production.value.replace(/"/g, '\\"')}"`;
     case 'rule':
       return production.name;
-    case 'sequence':
+    case 'sequence': {
       if (production.productions.length === 0) {
         return 'ℇ';
       }
-      return production.productions.map((p) => stringifyProduction(p))
+      return production.productions
+          .map((p) => {
+            return stringifyProduction(p, production.productions.length > 1);
+          })
           .join(' ');
-    case 'unaryOperator':
-      if (production.production.kind === 'sequence') {
-        return `(${stringifyProduction(production.production)})${
-            production.operator}`;
-      }
-      return `${stringifyProduction(production.production)}${
+    }
+    case 'unaryOperator': {
+      let result = `${stringifyProduction(production.production, true)}${
           production.operator}`;
-    case 'choice':
-      return production.choices.map(stringifyProduction).join(' | ');
+      if (production.production.kind === 'sequence' &&
+          production.production.productions.length > 1) {
+        result = `(${result})`;
+      }
+      return result;
+    }
+    case 'choice': {
+      let result = production.choices.map((p) => stringifyProduction(p, true))
+                       .join(' | ');
+      if (parenthesize) {
+        result = `(${result})`;
+      }
+      return result;
+    }
     default:
       const never: never = production;
       throw new Error(`Unknown production kind: ${JSON.stringify(never)}`);

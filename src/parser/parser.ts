@@ -34,7 +34,7 @@ class ParserContext {
     return stringText;
   }
 
-  parseRules() {
+  parseRules(): Rule[] {
     const rules: Rule[] = [];
     this.skipWhitespace();
     while (this.tokenizer.currentToken) {
@@ -47,75 +47,96 @@ class ParserContext {
       }
       this.skipWhitespace();
       this.consume(Token.type.equals, 'equals');
-      const choices: Production[] = [];
-      let currentChoice: Production[] = [];
-      parseChoicesLoop: while (true) {
-        this.skipWhitespace();
-        const nextToken = this.tokenizer.currentToken;
-        if (!nextToken) {
-          throw ParseError.atCurrentLocation(
-              'Unexpected end of input, missing semicolon?', this.tokenizer);
-        }
-        function getProduction(choice: Production[]): Production {
-          if (choice.length === 1) {
-            return choice[0];
-          }
-          return {kind: 'sequence', productions: choice};
-        }
-        switch (nextToken.type) {
-          case Token.type.star:
-          case Token.type.plus:
-          case Token.type.questionMark:
-            this.tokenizer.advance();
-            const latestProduction = currentChoice.pop();
-            if (latestProduction === undefined) {
-              throw ParseError.atToken(
-                  `Unary operator must come after a production`, nextToken);
-            }
-            currentChoice.push({
-              kind: 'unaryOperator',
-              operator: this.tokenizer.slice(nextToken) as ('*' | '+' | '?'),
-              production: latestProduction
-            });
-            break;
-          case Token.type.string:
-            const value = this.consumeQuotedString();
-            currentChoice.push({kind: 'literal', value});
-            break;
-          case Token.type.word:
-            this.tokenizer.advance();
-            const text = this.tokenizer.slice(nextToken);
-            if (text === 'ℇ') {
-              break;
-            }
-            currentChoice.push({
-              kind: 'rule',
-              name: text,
-              offsetStart: nextToken.start,
-              offsetEnd: nextToken.end
-            });
-            break;
-          case Token.type.verticalBar:
-            this.tokenizer.advance();
-            choices.push(getProduction(currentChoice));
-            currentChoice = [];
-            break;
-          case Token.type.semicolon:
-            this.tokenizer.advance();
-            choices.push(getProduction(currentChoice));
-
-            break parseChoicesLoop;
-          default:
-            throw ParseError.atToken(
-                `Unexpected token inside of rule definition`, nextToken);
-        }
-      }
       rules.push(new Rule(
-          this.tokenizer.slice(nameToken), {kind: 'choice', choices},
-          isLabelRule, nameToken.start, nameToken.end));
+          this.tokenizer.slice(nameToken), this.parseProduction(), isLabelRule,
+          nameToken.start, nameToken.end));
       this.skipWhitespace();
     }
     return rules;
+  }
+
+  parseProduction(depth = 0): Production {
+    const choices: Production[] = [];
+    let currentChoice: Production[] = [];
+    parseChoicesLoop: while (true) {
+      this.skipWhitespace();
+      const nextToken = this.tokenizer.currentToken;
+      if (!nextToken) {
+        throw ParseError.atCurrentLocation(
+            'Unexpected end of input, missing semicolon?', this.tokenizer);
+      }
+      function getProduction(choice: Production[]): Production {
+        if (choice.length === 1) {
+          return choice[0];
+        }
+        return {kind: 'sequence', productions: choice};
+      }
+      switch (nextToken.type) {
+        case Token.type.star:
+        case Token.type.plus:
+        case Token.type.questionMark:
+          this.tokenizer.advance();
+          const latestProduction = currentChoice.pop();
+          if (latestProduction === undefined) {
+            throw ParseError.atToken(
+                `Unary operator must come after a production`, nextToken);
+          }
+          currentChoice.push({
+            kind: 'unaryOperator',
+            operator: this.tokenizer.slice(nextToken) as ('*' | '+' | '?'),
+            production: latestProduction
+          });
+          break;
+        case Token.type.string:
+          const value = this.consumeQuotedString();
+          currentChoice.push({kind: 'literal', value});
+          break;
+        case Token.type.word:
+          this.tokenizer.advance();
+          const text = this.tokenizer.slice(nextToken);
+          if (text === 'ℇ') {
+            break;
+          }
+          currentChoice.push({
+            kind: 'rule',
+            name: text,
+            offsetStart: nextToken.start,
+            offsetEnd: nextToken.end
+          });
+          break;
+        case Token.type.verticalBar:
+          this.tokenizer.advance();
+          choices.push(getProduction(currentChoice));
+          currentChoice = [];
+          break;
+        case Token.type.semicolon:
+          if (depth !== 0) {
+            throw ParseError.atToken(`Unclosed parentheses`, nextToken);
+          }
+          this.tokenizer.advance();
+          choices.push(getProduction(currentChoice));
+
+          break parseChoicesLoop;
+        case Token.type.openParenthesis:
+          this.tokenizer.advance();
+          currentChoice.push(this.parseProduction(depth + 1));
+
+          break;
+        case Token.type.closeParenthesis:
+          if (depth <= 0) {
+            throw ParseError.atToken(
+                `Too many closing parentheses.`, nextToken);
+          }
+          this.tokenizer.advance();
+          choices.push(getProduction(currentChoice));
+
+          break parseChoicesLoop;
+        default:
+          throw ParseError.atToken(
+              `Unexpected token inside of rule definition`, nextToken);
+      }
+    }
+    return {kind: 'choice', choices};
   }
 
   consumeWordWithValue(expectedValue?: string) {

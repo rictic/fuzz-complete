@@ -126,4 +126,29 @@ Language "ebnf unary operators":
         [...take(language, 10)],
         ['', '', '', 'foo', '', 'baz', 'foofoo', '', '', 'foofoofoo']);
   });
+
+  test('it can parse parentheses', () => {
+    const parser = new Parser();
+    const language = parser.parse(`
+        Language "uses parens":
+          start = (foobar (' ' foobar)*)? (" baz " "bonk")?;
+          foobar = 'foo' | 'bar';
+    `);
+    assert.deepEqual(language.toString(), `
+Language "uses parens":
+  start = (foobar (" " foobar)*)? (" baz " "bonk")?;
+  foobar = "foo" | "bar";`.trim());
+    assert.deepEqual([...take(language, 10)], [
+      '',
+      'foo',
+      ' baz bonk',
+      'foo baz bonk',
+      'bar',
+      'bar baz bonk',
+      'foo foo',
+      'foo foo baz bonk',
+      'bar foo',
+      'bar foo baz bonk',
+    ]);
+  });
 });
