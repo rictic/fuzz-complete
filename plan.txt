@@ -1,0 +1,8 @@
+Features that might be interesting:
+  - ability to augment another language
+    - extend a language, override some rules, reference rules in parent language
+      with super.ruleName
+  - a binary subtraction operator
+  - support for indentation. useful both for generating languages like python,
+    and for generating pretty-printed code.
+    - Syntax maybe @indent @dedent @applyIndentation
