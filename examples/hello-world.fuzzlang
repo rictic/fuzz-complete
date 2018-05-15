@@ -1,0 +1,5 @@
+Language "Hello world":
+  start = greeting " " place punctuation;
+  greeting = "Hello" | "Greetings";
+  place = "World" | "Oakland" | "Universe";
+  punctuation = "." | "?" | "!";

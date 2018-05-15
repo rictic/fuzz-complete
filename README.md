@@ -26,6 +26,12 @@ Language "simple arithmetic":
 
 fuzz-complete will produce every sentence in that language, in roughly increasing complexity. More formally, for every finite N there is a finite K such that every sentence in the language of length ≤N is in fuzz-complete's output at an index less than K.
 
+### Usage
+
+```bash
+  npm install -g fuzz-complete
+  fuzz-complete ./examples/hello-world.fuzzlang
+```
 
 ### API
 
