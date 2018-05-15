@@ -47,11 +47,9 @@ if (emitJson) {
   outputIterable = jsonMap(outputIterable);
 }
 process.stdout.on('close', () => {
-  console.log('stdout closed');
   process.exit(0);
 });
 process.stdout.on('error', () => {
-  console.log('got an error');
   process.exit(0);
 });
 printInBursts(outputIterable);
@@ -62,6 +60,7 @@ function printInBursts(outputIterable: Iterable<string>) {
   for (const output of outputIterable) {
     process.stdout.write(output + '\n');
     if (i++ > 1000) {
+      // Need to give the event loop a chance to run.
       process.nextTick(() => printInBursts(outputIterable));
       return;
     }
