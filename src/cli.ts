@@ -42,32 +42,28 @@ if (!result.successful) {
   throw new Error('This line will not be reached');
 }
 const language = result.value;
-let outputIterable: Iterable<string> = language[Symbol.iterator]();
+let outputIterable: IterableIterator<string> = language[Symbol.iterator]();
 if (emitJson) {
   outputIterable = jsonMap(outputIterable);
 }
-process.stdout.on('close', () => {
-  process.exit(0);
-});
-process.stdout.on('error', () => {
+process.stdout.on('error', (e) => {
   process.exit(0);
 });
 printInBursts(outputIterable);
 
 
-function printInBursts(outputIterable: Iterable<string>) {
-  let i = 0;
-  for (const output of outputIterable) {
-    process.stdout.write(output + '\n');
-    if (i++ > 1000) {
-      // Need to give the event loop a chance to run.
-      process.nextTick(() => printInBursts(outputIterable));
+function printInBursts(outputIterable: Iterator<string>) {
+  for (let i = 0; i < 1000; i++) {
+    const {done, value} = outputIterable.next();
+    if (done) {
       return;
     }
+    process.stdout.write(value + '\n');
   }
+  setTimeout(() => printInBursts(outputIterable), 0);
 }
 
-function* jsonMap(iterable: Iterable<string>): Iterable<string> {
+function* jsonMap(iterable: Iterable<string>): IterableIterator<string> {
   for (const value of iterable) {
     yield JSON.stringify(value);
   }
