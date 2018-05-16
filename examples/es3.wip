@@ -1,0 +1,82 @@
+/**
+ * Source:
+ *     http://www.ecma-international.org/publications/files/ECMA-ST-ARCH/ECMA-262,%203rd%20edition,%20December%201999.pdf
+ *
+ * The goal of this grammar is to produce semantically distinct
+ * productions, rather than purely to test parsing itself.
+ * As a result, it diverges from spec in a few places.
+ *
+ * Known differences from spec:
+ *   - does not produce much whitespace variation
+ *   - never leaves out an optional semicolon
+ *   - does not produce varied comments
+ *   - does not explore the unicode space well
+ */
+Language "Ecmascript 3 (1999)":
+  Literal =
+    NullLiteral |
+    BooleanLiteral |
+    NumericLiteral |
+    StringLiteral;
+  Punctuator = "{" | "}" | "(" | ")" | "[" | "]" | "." | ";" | "," |
+               "<" | ">" | "<=" | ">=" | "==" | "!=" | "===" | "!==" |
+               "+" | "-" | "*" | "%" | "++" | "--" | "<<" | ">>" | ">>>" |
+               "&" | "|" | "^" | "!" | "~" | "&&" | "||" | "?" | ":" |
+               "=" | "+=" | "-=" | "*=" | "%=" | "<<=" | ">>=" | ">>>=" |
+               "&=" | "|=" | "^=";
+  DivPunctuator = "/" | "/=";
+  Identifier = IdentifierName /* TODO - ReservedWord */;
+  IdentifierName = IdentifierStart IdentifierPart*;
+  IdentifierStart = UnicodeLetter | '$' | '_' | UnicodeEscapeSequence;
+  IdentifierPart =
+        IdentifierStart |
+        /* UnicodeCombiningMark | */
+        UnicodeDigit |
+        /* UnicodeConnectorPunctuation | */
+        '\\' UnicodeEscapeSequence;
+  UnicodeEscapeSequence = 'u' HexDigit HexDigit HexDigit;
+  ReservedWord = Keyword | FutureReservedWord | NullLiteral | BooleanLiteral;
+  Keyword = "break" | "else" | "new" | "var" | "case" | "finally" |
+            "return" | "void" | "catch" | "for" | "switch" | "while" |
+            "continue" | "function" | "this" | "with" | "default" |
+            "if" | "throw" | "delete" | "in" | "try" | "do" |
+            "instanceof" | "typeof";
+  FutureReservedWord = "abstract" | "enum" | "int" | "short" | "boolean" |
+                       "export" | "interface" | "static" | "byte" |
+                       "extends" | "long" | "super" | "char" | "final" |
+                       "native" | "synchronized" | "class" | "float" |
+                       "package" | "throws" | "const" | "goto" | "private" |
+                       "transient" | "debugger" | "implements" | "protected" |
+                       "volatile" | "double" | "import" | "public";
+  NullLiteral = "null";
+  BooleanLiteral = "true" | "false";
+  Comment = MultiLineComment | SingleLineComment;
+  MultiLineComment = '/* multiline comment */';
+  SingleLineComment = '// single line comment\n';
+  UnicodeLetter =
+        /* TODO:
+            any character in the Unicode categories “Uppercase letter (Lu)”,
+            “Lowercase letter (Ll)”, “Titlecase letter (Lt)”,
+            “Modifier letter (Lm)”, “Other letter (Lo)”, or “Letter number (Nl)”.
+        */
+        'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j'
+        'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't'
+        'u' | 'v' | 'w' | 'x' | 'y' | 'z';
+  UnicodeDigit = /* TODO: any character in the Unicode category “Decimal number (Nd)” */ Digit;
+  /*
+    TODO: UnicodeCombiningMark =
+    any character in the Unicode categories
+    “Non-spacing mark (Mn)” or “Combining spacing mark (Mc)”
+  */
+  /*
+    UnicodeConnectorPunctuation
+    any character in the Unicode category “Connector punctuation (Pc)”
+  */
+  NumericLiteral = DecimalLiteral | HexIntegerLiteral;
+  DecimalLiteral =
+        DecimalIntegerLiteral '.' DecimalDigits? ExponentPart? |
+        '.' DecimalDigits ExponentPart? |
+        DecimalIntegerLiteral ExponentPart?;
+  StringLiteral = TodoRictic;
+  Digit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+  HexDigit = Digit | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
