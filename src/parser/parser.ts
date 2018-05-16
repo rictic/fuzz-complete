@@ -3,7 +3,7 @@ import {LocatedError, ParseError} from './error.js';
 import {Token, TokenType, TokenTypeDescription} from './token.js';
 import {Tokenizer} from './tokenizer.js';
 
-type Result<S, F> = {
+export type Result<S, F> = {
   successful: true,
   value: S
 }|{successful: false, error: F};
@@ -12,18 +12,24 @@ type Result<S, F> = {
 
 class ParserContext {
   private readonly tokenizer: Tokenizer;
-  public readonly result: Result<Language, LocatedError>;
+  public readonly result: Result<Language, LocatedError[]>;
   constructor(text: string) {
     this.tokenizer = new Tokenizer(text);
-    try {
-      this.result = {successful: true, value: this.parse()};
-    } catch (e) {
-      this.result = {successful: false, error: e};
-    }
+    this.result = this.tryParse();
   }
 
-  parse() {
-    return new Language(this.parseLanguageName(), this.parseRules());
+  tryParse(): Result<Language, LocatedError[]> {
+    let name, rules;
+    try {
+      name = this.parseLanguageName();
+      rules = this.parseRules();
+    } catch (e) {
+      if (e instanceof LocatedError) {
+        return {successful: false, error: [e]};
+      }
+      throw e;
+    }
+    return Language.tryToConstruct(name, rules);
   }
 
   parseLanguageName() {
@@ -200,7 +206,7 @@ export function parse(text: string): Language {
   if (context.result.successful) {
     return context.result.value;
   }
-  throw context.result.error;
+  throw context.result.error[0];
 }
 
 export function tryParse(text: string) {

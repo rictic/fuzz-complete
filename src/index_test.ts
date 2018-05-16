@@ -18,23 +18,8 @@ suite('integration tests', function() {
   }
 
   suite('it can fuzz itself', () => {
-    const languageText = `
-    Language "fuzz complete grammar":
-      start = 'Language "generated": ' rule*;
-      string = '"' stringContents '"';
-      rule = word '!'? ' = ' production '; ';
-      production =
-          (string ' ' | /* literal */
-           word ' ' | /* rule reference */
-           production ' | ' production | /* choice */
-           '(' production ')' | /* parethesized expression */
-           production+ /* sequence */
-          ) suffix* /* unary operator */;
-      suffix = '?' | '*' | '+';
-      word! = letter+;
-      stringContents = letter*;
-      letter = 'a' | 'b' | 'c';
-  `;
+    const languageText = fs.readFileSync(
+        path.join(__dirname, '..', 'examples', 'fuzz-lang.fuzzlang'), 'utf-8');
     const languageLanguage = parse(languageText);
 
     test('various properties of the generated languages', function() {
@@ -45,10 +30,13 @@ suite('integration tests', function() {
       for (const generatedLangDef of take(languageLanguage, numToGenerate)) {
         const result = tryParse(generatedLangDef);
         if (!result.successful) {
-          assert.instanceOf(
-              result.error, ValidationError,
-              `Expected all generated languages to parse, but this one did not: \n    ${
-                  generatedLangDef}\n`);
+          assert.isAtLeast(result.error.length, 1);
+          for (const error of result.error) {
+            assert.instanceOf(
+                error, ValidationError,
+                `Expected all generated languages to parse, but this one did not: \n    ${
+                    generatedLangDef}\n`);
+          }
         } else {
           successCount++;
           const stringValue = result.value.toString();

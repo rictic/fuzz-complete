@@ -37,7 +37,10 @@ if (langFilename === undefined) {
 const langSource = fs.readFileSync(langFilename, 'utf-8');
 const result = tryParse(langSource);
 if (!result.successful) {
-  console.error(result.error.message);
+  for (const error of result.error) {
+    console.error(error.message);
+    console.error('');
+  }
   process.exit(2);
   throw new Error('This line will not be reached');
 }
@@ -46,7 +49,7 @@ let outputIterable: IterableIterator<string> = language[Symbol.iterator]();
 if (emitJson) {
   outputIterable = jsonMap(outputIterable);
 }
-process.stdout.on('error', (e) => {
+process.stdout.on('error', () => {
   process.exit(0);
 });
 printInBursts(outputIterable);

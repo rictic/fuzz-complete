@@ -1,6 +1,7 @@
 import {Generator} from '../generator/lowlevel.js';
 
 import {ValidationError} from './error.js';
+import {Result} from './parser.js';
 
 export type Production = {
   kind: 'literal',
@@ -16,58 +17,89 @@ export type Production = {
 }|{kind: 'unaryOperator', operator: '*' | '?' | '+', production: Production}|
     {kind: 'choice', choices: Production[]};
 
+class ErrorCollection extends Error {
+  constructor(readonly errors: ValidationError[]) {
+    super();
+  }
+}
 
 export class Language {
   readonly rulesByName: ReadonlyMap<string, Rule>;
-  constructor(readonly name: string, readonly rules: ReadonlyArray<Rule>) {
+  private constructor(
+      readonly name: string, readonly rules: ReadonlyArray<Rule>) {
     const rulesByName = new Map<string, Rule>();
     for (const rule of rules) {
       rulesByName.set(rule.name, rule);
     }
     this.rulesByName = rulesByName;
-    this.validate();
+    const errors = this.validate();
+    if (errors !== undefined) {
+      throw new ErrorCollection(errors);
+    }
   }
 
-  private validate() {
+  static tryToConstruct(name: string, rules: ReadonlyArray<Rule>):
+      Result<Language, ValidationError[]> {
+    try {
+      const language = new Language(name, rules);
+      return {successful: true, value: language};
+    } catch (e) {
+      if (e instanceof ErrorCollection) {
+        return {successful: false, error: e.errors};
+      }
+      throw e;
+    }
+  }
+
+  private validate(): undefined|ValidationError[] {
+    const errors = [];
     const ruleNames = new Set<string>();
     for (const rule of this.rules) {
       if (ruleNames.has(rule.name)) {
-        throw new ValidationError(
-            `Duplicate rule`, rule.nameStart, rule.nameEnd);
+        errors.push(new ValidationError(
+            `Duplicate rule`, rule.nameStart, rule.nameEnd));
       }
       ruleNames.add(rule.name);
     }
     for (const rule of this.rules) {
-      this.validateRuleReferences(rule.production, ruleNames);
+      errors.push(...this.validateRuleReferences(rule.production, ruleNames));
     }
-    for (const rule of this.rules) {
-      this.validateRuleTerminates(rule);
+    if (errors.length === 0) {
+      for (const rule of this.rules) {
+        errors.push(...this.validateRuleTerminates(rule));
+      }
     }
+    if (errors.length > 0) {
+      return errors;
+    }
+    return undefined;
   }
 
-  private validateRuleReferences(
-      production: Production, ruleNames: ReadonlySet<string>) {
+  private *
+      validateRuleReferences(
+          production: Production, ruleNames: ReadonlySet<string>):
+          IterableIterator<ValidationError> {
     switch (production.kind) {
       case 'literal':
         return;
       case 'sequence':
         for (const innerProduction of production.productions) {
-          this.validateRuleReferences(innerProduction, ruleNames);
+          yield* this.validateRuleReferences(innerProduction, ruleNames);
         }
         return;
       case 'rule':
         if (!ruleNames.has(production.name)) {
-          throw new ValidationError(
+          yield new ValidationError(
               `Rule not declared`, production.offsetStart,
               production.offsetEnd);
         }
         return;
       case 'unaryOperator':
-        this.validateRuleReferences(production.production, ruleNames);
+        yield* this.validateRuleReferences(production.production, ruleNames);
         return;
       case 'choice':
         for (const choice of production.choices) {
-          this.validateRuleReferences(choice, ruleNames);
+          yield* this.validateRuleReferences(choice, ruleNames);
         }
         return;
       default:
@@ -76,19 +108,23 @@ export class Language {
     }
   }
 
-  private validateRuleTerminates(rule: Rule, visited = new Set<Rule>()) {
+  private *
+      validateRuleTerminates(rule: Rule, visited = new Set<Rule>()):
+          IterableIterator<ValidationError> {
     if (visited.has(rule)) {
-      throw new ValidationError(
+      yield new ValidationError(
           `Infinite loop detected in leftmost choice`, rule.nameStart,
           rule.nameEnd);
+      return;
     }
     visited.add(rule);
-    this.validateProductionTerminates(rule.production, visited);
+    yield* this.validateProductionTerminates(rule.production, visited);
     visited.delete(rule);
   }
 
-  private validateProductionTerminates(
-      production: Production, visited: Set<Rule>): void {
+  private *
+      validateProductionTerminates(production: Production, visited: Set<Rule>):
+          IterableIterator<ValidationError> {
     switch (production.kind) {
       case 'literal':
         return;  // no loop here!
@@ -98,24 +134,29 @@ export class Language {
           case '?':
             return;  // These evaluate first to empty string, so it's k.
           case '+':
-            return this.validateProductionTerminates(
-                production.production, visited);
+            yield*
+                this.validateProductionTerminates(
+                    production.production, visited);
+            return;
           default:
             const never: never = production.operator;
             throw new Error(`Unknown unary operator: ${never}`);
         }
       case 'rule':
-        return this.validateRuleTerminates(
-            this.rulesByName.get(production.name)!, visited);
+        yield*
+            this.validateRuleTerminates(
+                this.rulesByName.get(production.name)!, visited);
+        return;
       case 'choice':
         if (production.choices.length === 0) {
           return;
         }
-        return this.validateProductionTerminates(
-            production.choices[0], visited);
+        yield*
+            this.validateProductionTerminates(production.choices[0], visited);
+        return;
       case 'sequence':
         for (const child of production.productions) {
-          this.validateProductionTerminates(child, visited);
+          yield* this.validateProductionTerminates(child, visited);
         }
         return;
       default:

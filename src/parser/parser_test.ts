@@ -162,30 +162,32 @@ Language "uses parens":
   });
 
   suite('errors', () => {
-    function assertFailsWithError(langSource: string, errorMessage: string) {
+    function assertFailsWithErrors(
+        langSource: string, errorMessages: string[]) {
       const result = tryParse(langSource);
       if (result.successful) {
         throw new Error(`Did not expect ${
             JSON.stringify(
-                langSource)} to parse and validate successfully. Expected error: ${
-            errorMessage}`);
+                langSource)} to parse and validate successfully. Expected errors: ${
+            errorMessages.join('\n')}`);
       }
-      assert.deepEqual(result.error.originalMessage, errorMessage);
+      assert.deepEqual(
+          result.error.map((e) => e.originalMessage), errorMessages);
     }
     suite('parsing', () => {
       test('gives good error messages for common mistakes', () => {
-        assertFailsWithError(
-            ``, 'Unexpected end of input, expected word `Language`');
-        assertFailsWithError(
+        assertFailsWithErrors(
+            ``, ['Unexpected end of input, expected word `Language`']);
+        assertFailsWithErrors(
             `Language foo:`,
-            'Expected a string literal but found an identifier');
-        assertFailsWithError(
+            ['Expected a string literal but found an identifier']);
+        assertFailsWithErrors(
             `Language "foo": bar = "bar"`,
-            'Unexpected end of input, missing semicolon?');
-        assertFailsWithError(
-            `Language "foo": bar = "bar" baz = "baz;`,
-            'Did not expect to find an equals sign inside a rule definition. ' +
-                'Is the previous rule missing its trailing semicolon?');
+            ['Unexpected end of input, missing semicolon?']);
+        assertFailsWithErrors(`Language "foo": bar = "bar" baz = "baz;`, [
+          'Did not expect to find an equals sign inside a rule definition. ' +
+          'Is the previous rule missing its trailing semicolon?'
+        ]);
       });
     });
 
@@ -196,7 +198,7 @@ Language "uses parens":
           `Language "foo": start = 'lol' 'what'; foo = honk;`,
         ];
         for (const langSource of langSources) {
-          assertFailsWithError(langSource, 'Rule not declared');
+          assertFailsWithErrors(langSource, ['Rule not declared']);
         }
       });
 
@@ -204,12 +206,17 @@ Language "uses parens":
         const langSources = [
           `Language "loop": start = start;`,
           `Language "loop": start = "a" start;`,
-          `Language "loop": foo = "a" bar; bar = "b" baz; baz = "c" foo;`,
         ];
         for (const langSource of langSources) {
-          assertFailsWithError(
-              langSource, 'Infinite loop detected in leftmost choice');
+          assertFailsWithErrors(
+              langSource, ['Infinite loop detected in leftmost choice']);
         }
+        assertFailsWithErrors(
+            `Language "loop": foo = "a" bar; bar = "b" baz; baz = "c" foo;`, [
+              'Infinite loop detected in leftmost choice',
+              'Infinite loop detected in leftmost choice',
+              'Infinite loop detected in leftmost choice'
+            ]);
       });
     });
   });
