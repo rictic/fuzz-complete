@@ -1,4 +1,6 @@
 /**
+ * WIP, still very incomplete.
+ *
  * Source:
  *     http://www.ecma-international.org/publications/files/ECMA-ST-ARCH/ECMA-262,%203rd%20edition,%20December%201999.pdf
  *
@@ -62,7 +64,8 @@ Language "Ecmascript 3 (1999)":
         'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j'
         'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't'
         'u' | 'v' | 'w' | 'x' | 'y' | 'z';
-  UnicodeDigit = /* TODO: any character in the Unicode category “Decimal number (Nd)” */ Digit;
+  UnicodeDigit = /* TODO: any character in the Unicode category “Decimal number (Nd)” */
+      DecimalDigit;
   /*
     TODO: UnicodeCombiningMark =
     any character in the Unicode categories
@@ -74,9 +77,56 @@ Language "Ecmascript 3 (1999)":
   */
   NumericLiteral = DecimalLiteral | HexIntegerLiteral;
   DecimalLiteral =
-        DecimalIntegerLiteral '.' DecimalDigits? ExponentPart? |
-        '.' DecimalDigits ExponentPart? |
+        DecimalIntegerLiteral '.' DecimalDigit* ExponentPart? |
+        '.' DecimalDigit+ ExponentPart? |
         DecimalIntegerLiteral ExponentPart?;
-  StringLiteral = TodoRictic;
-  Digit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
-  HexDigit = Digit | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+  HexIntegerLiteral = '0' ('x'|'X') HexDigit+;
+  DecimalIntegerLiteral =
+    '0' |
+    NonZeroDigit DecimalDigit*;
+  ExponentPart =
+    ('e' | 'E') ('+' | '-')? DecimalDigit+;
+  StringLiteral =
+      '"' DoubleStringCharacters? '"' |
+      "'" SingleStringCharacters? "'";
+  NonZeroDigit = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+  DecimalDigit = '0' | NonZeroDigit;
+  HexDigit = DecimalDigit | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+  DoubleStringCharacters = 'a'+;
+  SingleStringCharacters = 'a'+;
+/*
+  Extra string literal details.
+  StringLiteral ::
+  DoubleStringCharacters ::
+  DoubleStringCharacter DoubleStringCharactersopt
+  SingleStringCharacters ::
+  SingleStringCharacter SingleStringCharactersopt
+  DoubleStringCharacter ::
+  SourceCharacter but not double-quote " or backslash \ or LineTerminator
+  \ EscapeSequence
+  - 19 -
+  SingleStringCharacter ::
+  SourceCharacter but not single-quote ' or backslash \ or LineTerminator
+  \ EscapeSequence
+  EscapeSequence ::
+  CharacterEscapeSequence
+  0 [lookahead ∉ DecimalDigit]
+  HexEscapeSequence
+  UnicodeEscapeSequence
+  CharacterEscapeSequence ::
+  SingleEscapeCharacter
+  NonEscapeCharacter
+  SingleEscapeCharacter :: one of
+  '"\bfnrtv
+  NonEscapeCharacter ::
+  SourceCharacter but not EscapeCharacter or LineTerminator
+  EscapeCharacter ::
+  SingleEscapeCharacter
+  DecimalDigit
+  x
+  u
+  HexEscapeSequence ::
+  x HexDigit HexDigit
+  UnicodeEscapeSequence ::
+  u HexDigit HexDigit HexDigit HexDigit
+*/
