@@ -1,5 +1,5 @@
 /**
- * WIP, still very incomplete.
+ * ES3 as specified.
  *
  * Source:
  *     http://www.ecma-international.org/publications/files/ECMA-ST-ARCH/ECMA-262,%203rd%20edition,%20December%201999.pdf
@@ -15,47 +15,325 @@
  *   - does not explore the unicode space well
  */
 Language "Ecmascript 3 (1999)":
-  Literal =
-    NullLiteral |
-    BooleanLiteral |
-    NumericLiteral |
-    StringLiteral;
-  Punctuator = "{" | "}" | "(" | ")" | "[" | "]" | "." | ";" | "," |
-               "<" | ">" | "<=" | ">=" | "==" | "!=" | "===" | "!==" |
-               "+" | "-" | "*" | "%" | "++" | "--" | "<<" | ">>" | ">>>" |
-               "&" | "|" | "^" | "!" | "~" | "&&" | "||" | "?" | ":" |
-               "=" | "+=" | "-=" | "*=" | "%=" | "<<=" | ">>=" | ">>>=" |
-               "&=" | "|=" | "^=";
-  DivPunctuator = "/" | "/=";
-  Identifier = IdentifierName /* TODO - ReservedWord */;
-  IdentifierName = IdentifierStart IdentifierPart*;
-  IdentifierStart = UnicodeLetter | '$' | '_' | UnicodeEscapeSequence;
-  IdentifierPart =
+    Program = SourceElement+;
+    SourceElement =
+        Statement |
+        FunctionDeclaration;
+    Statement =
+        Block |
+        VariableStatement |
+        EmptyStatement |
+        ExpressionStatement |
+        IfStatement |
+        IterationStatement |
+        ContinueStatement |
+        BreakStatement |
+        ReturnStatement |
+        WithStatement |
+        LabelledStatement |
+        SwitchStatement |
+        ThrowStatement |
+        TryStatement
+        ;
+    Block =
+        '{' Statement* '}';
+
+    VariableStatement =
+        'var ' VariableDeclarationList ';';
+    VariableDeclarationList =
+        VariableDeclaration |
+        VariableDeclarationList ',' VariableDeclaration;
+    VariableDeclarationListNoIn =
+        VariableDeclarationNoIn |
+        VariableDeclarationListNoIn ',' VariableDeclarationNoIn;
+    VariableDeclaration =
+        Identifier Initialiser?;
+    VariableDeclarationNoIn =
+        Identifier InitialiserNoIn?;
+    Initialiser =
+        ' = ' AssignmentExpression;
+    InitialiserNoIn =
+        ' = ' AssignmentExpressionNoIn;
+
+    EmptyStatement = ';';
+
+    ExpressionStatement =
+        /*
+          We're supposed to lookahead and not generate an
+          expression here that starts with '{' or 'function'.
+          Since we can't do that, we'll just wrap the expression
+          in parens.
+        */
+        '(' Expression ')' ';' ;
+
+    IfStatement =
+        'if (' Expression ') ' Statement ' else ' Statement |
+        'if (' Expression ') ' Statement;
+
+    IterationStatement =
+        'do ' Statement ' while (' Expression ');' |
+        'while (' Expression ')' Statement |
+        'for ('ExpressionNoIn?';' Expression? ';' Expression? ')' Statement |
+        'for (var ' VariableDeclarationListNoIn ';' Expression? ';' Expression? ')' Statement |
+        'for (' LeftHandSideExpression ' in ' Expression ')' Statement |
+        'for ( var ' VariableDeclarationNoIn ' in ' Expression ')' Statement;
+
+    ContinueStatement = 'continue' (' ' Identifier)? ';';
+    BreakStatement = 'break' (' ' Identifier)? ';';
+    ReturnStatement =
+        'return' (' ' Expression)? ';';
+    WithStatement =
+        'with (' Expression ')' Statement;
+
+    SwitchStatement =
+        'switch (' Expression ')' CaseBlock;
+    CaseBlock =
+        '{' CaseClause* '}' |
+        '{' CaseClause* DefaultClause CaseClause* '}';
+    CaseClause =
+        'case ' Expression ':' Statement*;
+    DefaultClause =
+        'default:' Statement*;
+
+    LabelledStatement =
+        Identifier ':' Statement;
+
+    ThrowStatement =
+        'throw ' /*[no LineTerminator here]*/ Expression ';';
+
+    TryStatement =
+        'try' Block Catch |
+        'try' Block Finally |
+        'try' Block Catch Finally ;
+    Catch =
+        'catch ('Identifier ')' Block;
+    Finally =
+        'finally ' Block;
+
+    FunctionDeclaration =
+        'function ' Identifier '(' FormalParameterList? ')' '{' FunctionBody '}';
+    FunctionExpression =
+        'function ' Identifier? '(' FormalParameterList? ')' '{' FunctionBody '}';
+    FormalParameterList =
+        Identifier |
+        FormalParameterList ',' Identifier;
+    FunctionBody =
+        SourceElement+;
+
+    Expression =
+        AssignmentExpression |
+        Expression ',' AssignmentExpression;
+    ExpressionNoIn =
+        AssignmentExpressionNoIn |
+        ExpressionNoIn ',' AssignmentExpressionNoIn;
+    PrimaryExpression =
+        'this' |
+        Identifier |
+        Literal |
+        ArrayLiteral |
+        ObjectLiteral |
+        '(' Expression ')';
+    ArrayLiteral =
+        '[' Elision? ']' |
+        '[' ElementList ']' |
+        '[' ElementList ',' Elision? ']' ;
+    ElementList =
+        Elision? AssignmentExpression |
+        ElementList ',' Elision? AssignmentExpression;
+    ObjectLiteral =
+        '{' PropertyNameAndValueList? '}';
+    PropertyNameAndValueList =
+        PropertyName ':' AssignmentExpression |
+        PropertyNameAndValueList ',' PropertyName ':' AssignmentExpression;
+    Elision = ','+;
+    PropertyName =
+        Identifier |
+        StringLiteral |
+        NumericLiteral;
+    MemberExpression =
+        PrimaryExpression |
+        FunctionExpression |
+        MemberExpression '[' Expression ']' |
+        MemberExpression '.' Identifier |
+        'new' MemberExpression Arguments;
+    NewExpression =
+        MemberExpression |
+        'new' NewExpression;
+    CallExpression =
+        MemberExpression Arguments |
+        CallExpression Arguments |
+        CallExpression '[' Expression ']' |
+        CallExpression '.' Identifier;
+    Arguments =
+        '(' ')'
+        '(' ArgumentList ')';
+    ArgumentList =
+        AssignmentExpression |
+        ArgumentList ',' AssignmentExpression;
+    LeftHandSideExpression =
+        NewExpression |
+        CallExpression;
+    PostfixExpression =
+        LeftHandSideExpression |
+        LeftHandSideExpression /*[no LineTerminator here]*/ '++' |
+        LeftHandSideExpression /*[no LineTerminator here]*/ '--';
+    UnaryExpression =
+        PostfixExpression |
+        'delete ' UnaryExpression |
+        'void ' UnaryExpression |
+        'typeof ' UnaryExpression |
+        '++' UnaryExpression |
+        '--' UnaryExpression |
+        '+' UnaryExpression |
+        '-' UnaryExpression |
+        '~' UnaryExpression |
+        '!' UnaryExpression;
+    RelationalExpression =
+        ShiftExpression |
+        RelationalExpression ' < ' ShiftExpression |
+        RelationalExpression ' > ' ShiftExpression |
+        RelationalExpression ' <= ' ShiftExpression |
+        RelationalExpression ' >= ' ShiftExpression |
+        RelationalExpression ' instanceof ' ShiftExpression |
+        RelationalExpression ' in ' ShiftExpression;
+    RelationalExpressionNoIn =
+        ShiftExpression |
+        RelationalExpressionNoIn ' < ' ShiftExpression |
+        RelationalExpressionNoIn ' > ' ShiftExpression |
+        RelationalExpressionNoIn ' <= ' ShiftExpression |
+        RelationalExpressionNoIn ' >= ' ShiftExpression |
+        RelationalExpressionNoIn ' instanceof ' ShiftExpression;
+    EqualityExpression =
+        RelationalExpression |
+        EqualityExpression ' == ' RelationalExpression |
+        EqualityExpression ' != ' RelationalExpression |
+        EqualityExpression ' === ' RelationalExpression |
+        EqualityExpression ' !== ' RelationalExpression;
+    EqualityExpressionNoIn =
+        RelationalExpressionNoIn |
+        EqualityExpressionNoIn ' == ' RelationalExpressionNoIn |
+        EqualityExpressionNoIn ' != ' RelationalExpressionNoIn |
+        EqualityExpressionNoIn ' === ' RelationalExpressionNoIn |
+        EqualityExpressionNoIn ' !== ' RelationalExpressionNoIn;
+    MultiplicativeExpression =
+        UnaryExpression |
+        MultiplicativeExpression ' * ' UnaryExpression |
+        MultiplicativeExpression ' / ' UnaryExpression |
+        MultiplicativeExpression ' % ' UnaryExpression;
+    AdditiveExpression =
+        MultiplicativeExpression |
+        AdditiveExpression ' + ' MultiplicativeExpression |
+        AdditiveExpression ' - ' MultiplicativeExpression;
+    ShiftExpression =
+        AdditiveExpression |
+        ShiftExpression ' << ' AdditiveExpression |
+        ShiftExpression ' >> ' AdditiveExpression |
+        ShiftExpression ' >>> ' AdditiveExpression;
+    BitwiseANDExpression =
+        EqualityExpression |
+        BitwiseANDExpression ' & ' EqualityExpression;
+    BitwiseANDExpressionNoIn =
+        EqualityExpressionNoIn |
+        BitwiseANDExpressionNoIn ' & ' EqualityExpressionNoIn;
+    BitwiseXORExpression =
+        BitwiseANDExpression |
+        BitwiseXORExpression ' ^ ' BitwiseANDExpression;
+    BitwiseXORExpressionNoIn =
+        BitwiseANDExpressionNoIn |
+        BitwiseXORExpressionNoIn ' ^ ' BitwiseANDExpressionNoIn;
+    BitwiseORExpression =
+        BitwiseXORExpression |
+        BitwiseORExpression ' | ' BitwiseXORExpression;
+    BitwiseORExpressionNoIn =
+        BitwiseXORExpressionNoIn |
+        BitwiseORExpressionNoIn ' | ' BitwiseXORExpressionNoIn;
+    LogicalANDExpression =
+        BitwiseORExpression |
+        LogicalANDExpression ' && ' BitwiseORExpression;
+    LogicalANDExpressionNoIn =
+        BitwiseORExpressionNoIn |
+        LogicalANDExpressionNoIn ' && ' BitwiseORExpressionNoIn;
+    LogicalORExpression =
+        LogicalANDExpression |
+        LogicalORExpression ' || ' LogicalANDExpression;
+    LogicalORExpressionNoIn =
+        LogicalANDExpressionNoIn |
+        LogicalORExpressionNoIn ' || ' LogicalANDExpressionNoIn;
+    ConditionalExpression =
+        LogicalORExpression |
+        LogicalORExpression ' ? ' AssignmentExpression ' : ' AssignmentExpression;
+    ConditionalExpressionNoIn =
+        LogicalORExpressionNoIn |
+        LogicalORExpressionNoIn ' ? ' AssignmentExpression ' : ' AssignmentExpressionNoIn;
+    AssignmentExpression =
+        ConditionalExpression |
+        LeftHandSideExpression AssignmentOperator AssignmentExpression;
+    AssignmentExpressionNoIn =
+        ConditionalExpressionNoIn |
+        LeftHandSideExpression AssignmentOperator AssignmentExpressionNoIn;
+    AssignmentOperator =
+        ' = ' | ' *= ' | ' /= ' | ' %= ' | ' += ' | ' -= ' | ' <<= ' |
+        ' >>= ' | ' >>>= ' | ' &= ' | ' ^= ' | ' |= ';
+
+
+    RegularExpressionLiteral =
+      '/' RegularExpressionBody '/' RegularExpressionFlags;
+    RegularExpressionBody =
+        RegularExpressionFirstChar RegularExpressionChar*;
+    RegularExpressionFirstChar =
+        NonTerminator /* but not * or \ or / */ |
+        BackslashSequence;
+    RegularExpressionChar =
+        NonTerminator /*TODO : not \ or / BackslashSequence */;
+    SourceCharacter = 'a' | 'b' | 'c' /* Any unicode character */;
+    BackslashSequence = '\\' NonTerminator;
+    NonTerminator = SourceCharacter /* TODO: - LineTerminator */;
+    RegularExpressionFlags = IdentifierPart*;
+
+
+    Literal =
+        NullLiteral |
+        BooleanLiteral |
+        NumericLiteral |
+        StringLiteral;
+    Punctuator = "{" | "}" | "(" | ")" | "[" | "]" | "." | ";" | "," |
+                 "<" | ">" | "<=" | ">=" | "==" | "!=" | "===" | "!==" |
+                 "+" | "-" | "*" | "%" | "++" | "--" | "<<" | ">>" | ">>>" |
+                 "&" | "|" | "^" | "!" | "~" | "&&" | "||" | "?" | ":" |
+                 "=" | "+=" | "-=" | "*=" | "%=" | "<<=" | ">>=" | ">>>=" |
+                 "&=" | "|=" | "^=";
+    DivPunctuator = "/" | "/=";
+    Identifier! = IdentifierName /* TODO - ReservedWord */;
+    IdentifierName = IdentifierStart IdentifierPart*;
+    IdentifierStart = UnicodeLetter | '$' | '_' | UnicodeEscapeSequence;
+    IdentifierPart =
         IdentifierStart |
         /* UnicodeCombiningMark | */
         UnicodeDigit |
         /* UnicodeConnectorPunctuation | */
         '\\' UnicodeEscapeSequence;
-  UnicodeEscapeSequence = 'u' HexDigit HexDigit HexDigit;
-  ReservedWord = Keyword | FutureReservedWord | NullLiteral | BooleanLiteral;
-  Keyword = "break" | "else" | "new" | "var" | "case" | "finally" |
-            "return" | "void" | "catch" | "for" | "switch" | "while" |
-            "continue" | "function" | "this" | "with" | "default" |
-            "if" | "throw" | "delete" | "in" | "try" | "do" |
-            "instanceof" | "typeof";
-  FutureReservedWord = "abstract" | "enum" | "int" | "short" | "boolean" |
-                       "export" | "interface" | "static" | "byte" |
-                       "extends" | "long" | "super" | "char" | "final" |
-                       "native" | "synchronized" | "class" | "float" |
-                       "package" | "throws" | "const" | "goto" | "private" |
-                       "transient" | "debugger" | "implements" | "protected" |
-                       "volatile" | "double" | "import" | "public";
-  NullLiteral = "null";
-  BooleanLiteral = "true" | "false";
-  Comment = MultiLineComment | SingleLineComment;
-  MultiLineComment = '/* multiline comment */';
-  SingleLineComment = '// single line comment\n';
-  UnicodeLetter =
+    UnicodeEscapeSequence = 'u' HexDigit HexDigit HexDigit;
+    ReservedWord = Keyword | FutureReservedWord | NullLiteral | BooleanLiteral;
+    Keyword = "break" | "else" | "new" | "var" | "case" | "finally" |
+                "return" | "void" | "catch" | "for" | "switch" | "while" |
+                "continue" | "function" | "this" | "with" | "default" |
+                "if" | "throw" | "delete" | "in" | "try" | "do" |
+                "instanceof" | "typeof";
+    FutureReservedWord = "abstract" | "enum" | "int" | "short" | "boolean" |
+                         "export" | "interface" | "static" | "byte" |
+                         "extends" | "long" | "super" | "char" | "final" |
+                         "native" | "synchronized" | "class" | "float" |
+                         "package" | "throws" | "const" | "goto" | "private" |
+                         "transient" | "debugger" | "implements" | "protected" |
+                         "volatile" | "double" | "import" | "public";
+    NullLiteral = "null";
+    BooleanLiteral = "true" | "false";
+
+
+    Comment = MultiLineComment | SingleLineComment;
+    MultiLineComment = '/* multiline comment */';
+    SingleLineComment = '// single line comment\n';
+    UnicodeLetter =
         /* TODO:
             any character in the Unicode categories “Uppercase letter (Lu)”,
             “Lowercase letter (Ll)”, “Titlecase letter (Lt)”,
@@ -64,69 +342,72 @@ Language "Ecmascript 3 (1999)":
         'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j'
         'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't'
         'u' | 'v' | 'w' | 'x' | 'y' | 'z';
-  UnicodeDigit = /* TODO: any character in the Unicode category “Decimal number (Nd)” */
-      DecimalDigit;
-  /*
-    TODO: UnicodeCombiningMark =
-    any character in the Unicode categories
-    “Non-spacing mark (Mn)” or “Combining spacing mark (Mc)”
-  */
-  /*
-    UnicodeConnectorPunctuation
-    any character in the Unicode category “Connector punctuation (Pc)”
-  */
-  NumericLiteral = DecimalLiteral | HexIntegerLiteral;
-  DecimalLiteral =
+
+
+    UnicodeDigit = /* TODO: any character in the Unicode category “Decimal number (Nd)” */
+        DecimalDigit;
+    /*
+        TODO: UnicodeCombiningMark =
+        any character in the Unicode categories
+        “Non-spacing mark (Mn)” or “Combining spacing mark (Mc)”
+    */
+    /*
+        UnicodeConnectorPunctuation
+        any character in the Unicode category “Connector punctuation (Pc)”
+    */
+    NumericLiteral = DecimalLiteral | HexIntegerLiteral;
+    DecimalLiteral =
         DecimalIntegerLiteral '.' DecimalDigit* ExponentPart? |
         '.' DecimalDigit+ ExponentPart? |
         DecimalIntegerLiteral ExponentPart?;
-  HexIntegerLiteral = '0' ('x'|'X') HexDigit+;
-  DecimalIntegerLiteral =
-    '0' |
-    NonZeroDigit DecimalDigit*;
-  ExponentPart =
-    ('e' | 'E') ('+' | '-')? DecimalDigit+;
-  StringLiteral =
-      '"' DoubleStringCharacters? '"' |
-      "'" SingleStringCharacters? "'";
-  NonZeroDigit = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
-  DecimalDigit = '0' | NonZeroDigit;
-  HexDigit = DecimalDigit | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
-  DoubleStringCharacters = 'a'+;
-  SingleStringCharacters = 'a'+;
-/*
-  Extra string literal details.
-  StringLiteral ::
-  DoubleStringCharacters ::
-  DoubleStringCharacter DoubleStringCharactersopt
-  SingleStringCharacters ::
-  SingleStringCharacter SingleStringCharactersopt
-  DoubleStringCharacter ::
-  SourceCharacter but not double-quote " or backslash \ or LineTerminator
-  \ EscapeSequence
-  - 19 -
-  SingleStringCharacter ::
-  SourceCharacter but not single-quote ' or backslash \ or LineTerminator
-  \ EscapeSequence
-  EscapeSequence ::
-  CharacterEscapeSequence
-  0 [lookahead ∉ DecimalDigit]
-  HexEscapeSequence
-  UnicodeEscapeSequence
-  CharacterEscapeSequence ::
-  SingleEscapeCharacter
-  NonEscapeCharacter
-  SingleEscapeCharacter :: one of
-  '"\bfnrtv
-  NonEscapeCharacter ::
-  SourceCharacter but not EscapeCharacter or LineTerminator
-  EscapeCharacter ::
-  SingleEscapeCharacter
-  DecimalDigit
-  x
-  u
-  HexEscapeSequence ::
-  x HexDigit HexDigit
-  UnicodeEscapeSequence ::
-  u HexDigit HexDigit HexDigit HexDigit
-*/
+    HexIntegerLiteral = '0' ('x'|'X') HexDigit+;
+    DecimalIntegerLiteral =
+        '0' |
+        NonZeroDigit DecimalDigit*;
+    ExponentPart =
+        ('e' | 'E') ('+' | '-')? DecimalDigit+;
+
+    StringLiteral =
+        '"' DoubleStringCharacters? '"' |
+        "'" SingleStringCharacters? "'";
+    NonZeroDigit = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+    DecimalDigit = '0' | NonZeroDigit;
+    HexDigit = DecimalDigit | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+    DoubleStringCharacters = 'a'+;
+    SingleStringCharacters = 'a'+;
+    /*
+    Extra string literal details.
+    StringLiteral ::
+    DoubleStringCharacters ::
+    DoubleStringCharacter DoubleStringCharactersopt
+    SingleStringCharacters ::
+    SingleStringCharacter SingleStringCharactersopt
+    DoubleStringCharacter ::
+    SourceCharacter but not double-quote " or backslash \ or LineTerminator
+    \ EscapeSequence
+    - 19 -
+    SingleStringCharacter ::
+    SourceCharacter but not single-quote ' or backslash \ or LineTerminator
+    \ EscapeSequence
+    EscapeSequence ::
+    CharacterEscapeSequence
+    0 [lookahead ∉ DecimalDigit]
+    HexEscapeSequence
+    UnicodeEscapeSequence
+    CharacterEscapeSequence ::
+    SingleEscapeCharacter
+    NonEscapeCharacter
+    SingleEscapeCharacter :: one of
+    '"\bfnrtv
+    NonEscapeCharacter ::
+    SourceCharacter but not EscapeCharacter or LineTerminator
+    EscapeCharacter ::
+    SingleEscapeCharacter
+    DecimalDigit
+    x
+    u
+    HexEscapeSequence ::
+    x HexDigit HexDigit
+    UnicodeEscapeSequence ::
+    u HexDigit HexDigit HexDigit HexDigit
+    */
