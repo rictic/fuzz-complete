@@ -26,9 +26,16 @@ function Op(operator: '+'|'?'|'*', production: Production): Production {
 
 const Empty = Sequence();
 
+function NewLanguage(name: string, rules: Rule[]): Language {
+  const result = Language.tryToConstruct(name, rules);
+  if (!result.successful) {
+    throw result.error;
+  }
+  return result.value;
+}
 
 suite('language b*a', () => {
-  const fooLanguage = new Language(
+  const fooLanguage = NewLanguage(
       'b*a',
       [NewRule('foo', [Literal('a'), Sequence(Literal('b'), Ref('foo'))])]);
 
@@ -46,7 +53,7 @@ Language "b*a":
 });
 
 suite('language a(b|c)*', () => {
-  const aThenBsAndCs = new Language('a(b|c)*', [
+  const aThenBsAndCs = NewLanguage('a(b|c)*', [
     NewRule('start', [Sequence(Literal('a'), Ref('bOrCStar'))]),
     NewRule('bOrC', [Literal('b'), Literal('c')]),
     NewRule('bOrCStar', [Empty, Sequence(Ref('bOrC'), Ref('bOrCStar'))])
@@ -69,7 +76,7 @@ Language "a(b|c)*":
 });
 
 suite('language (a+b)*', () => {
-  const lang = new Language('(a+b)*', [
+  const lang = NewLanguage('(a+b)*', [
     NewRule(
         'start',
         [
@@ -90,7 +97,7 @@ suite('language (a+b)*', () => {
 });
 
 suite('simplified javascript', () => {
-  const js = new Language('javascript', [
+  const js = NewLanguage('javascript', [
     NewRule('file', [Ref('program')]),
     NewRule('program', [Sequence(Ref('statements'))]),
     NewRule(
@@ -150,7 +157,7 @@ suite('simplified javascript', () => {
 });
 
 suite('language with one labeled rule', () => {
-  const labelled = new Language('one label', [
+  const labelled = NewLanguage('one label', [
     NewRule('start', [Empty, Sequence(Ref('identifier'), Ref('start'))]),
     new Rule(
         'identifier', Choice(Literal('a'), Literal('b'), Literal('c')), true, 0,
@@ -166,7 +173,7 @@ suite('language with one labeled rule', () => {
 
 suite('EBNF unary operators', () => {
   suite('the + operator', () => {
-    const fooPlusBar = new Language('foo+bar', [
+    const fooPlusBar = NewLanguage('foo+bar', [
       NewRule('start', [Sequence(Op('+', Literal('foo')), Literal('bar'))])
     ]);
 
@@ -189,7 +196,7 @@ Language "foo+bar":
   });
 
   suite('the * operator', () => {
-    const fooPlusBar = new Language('foo*bar', [
+    const fooPlusBar = NewLanguage('foo*bar', [
       NewRule('start', [Sequence(Op('*', Literal('foo')), Literal('bar'))])
     ]);
 
@@ -212,7 +219,7 @@ Language "foo*bar":
   });
 
   suite('the ? operator', () => {
-    const fooPlusBar = new Language('foo?bar', [
+    const fooPlusBar = NewLanguage('foo?bar', [
       NewRule('start', [Sequence(Op('?', Literal('foo')), Literal('bar'))])
     ]);
 
